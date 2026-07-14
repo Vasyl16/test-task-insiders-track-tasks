@@ -12,16 +12,40 @@ Controller -> Service -> Repository -> Prisma
 - Prisma: provide persistence and database interaction.
 
 ## Module Structure
-Each feature module should follow a consistent structure:
+The project uses a module-based structure to keep the backend scalable and organized.
 
+Suggested structure:
+
+src/
+├── main.ts
+├── app.module.ts
+├── modules/
+│   ├── auth/
+│   ├── users/
+│   ├── workspaces/
+│   ├── projects/
+│   ├── tasks/
+│   ├── comments/
+│   └── history/
+├── common/
+├── config/
+└── prisma/
+
+Each feature module should include only the folders it needs, such as:
 - controllers/
 - services/
 - repositories/
 - dto/
-- interfaces/ or entities/
+- interfaces/ or types/
 - guards/
 - decorators/
-- exceptions/
+- utils/
+
+## Why This Structure
+- It matches NestJS module-based conventions.
+- It keeps feature code isolated and easier to maintain.
+- It supports future growth without forcing a large refactor.
+- It preserves the layered architecture and keeps business logic out of controllers.
 
 ## Database Rules
 - Use PostgreSQL with Prisma.
