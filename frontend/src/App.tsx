@@ -1,8 +1,15 @@
+import { RouterProvider } from 'react-router'
+import { AuthProvider } from './providers/AuthProvider'
+import { QueryProvider } from './providers/QueryProvider'
+import { router } from './routes/router'
+
 function App() {
   return (
-    <div className="flex min-h-screen items-center justify-center">
-      <h1 className="text-3xl font-semibold">Task Tracker</h1>
-    </div>
+    <QueryProvider>
+      <AuthProvider>
+        <RouterProvider router={router} />
+      </AuthProvider>
+    </QueryProvider>
   )
 }
 

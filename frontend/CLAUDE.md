@@ -11,11 +11,10 @@ It contains only frontend-related guidance and should be used as the reference f
 - TypeScript
 - Vite
 - Tailwind CSS
-- Axios (HTTP client) — planned, not yet installed
-- A server-state/query library (e.g. TanStack Query) — planned, not yet installed
-- React Router — planned, not yet installed
-
-The three "planned" items are implied by the folder structure below (`api/queries`, `api/mutations`, `api/queryKeys.ts`, `routes/`) but haven't been confirmed or installed yet. Confirm the exact libraries before the first implementation step that needs them.
+- Axios (HTTP client)
+- TanStack Query (server state / caching)
+- React Router (v8 — imported from the `react-router` package directly; `react-router-dom` is the legacy/frozen name as of this version)
+- React Hook Form + Zod (+ `@hookform/resolvers` for the RHF↔Zod glue) — installed, not yet used by any real form (placeholders only so far)
 
 ## Frontend Architecture
 
