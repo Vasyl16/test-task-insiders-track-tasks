@@ -53,6 +53,14 @@ Each feature module should include only the folders it needs, such as:
 - Only repositories may access Prisma directly.
 - Never expose Prisma models through the API.
 
+## Shared Infrastructure
+The backend now includes shared infrastructure for future growth:
+- ConfigModule for environment variables.
+- Global ValidationPipe for request validation.
+- Global exception filter for consistent error responses.
+- PrismaModule and PrismaService as the persistence foundation.
+- Module folders for upcoming feature areas.
+
 ## API Architecture
 - Use REST APIs.
 - Use DTOs for request and response contracts.
