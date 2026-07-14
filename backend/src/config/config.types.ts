@@ -8,5 +8,6 @@ export interface JwtConfig {
 export interface AppConfig {
   port: number;
   databaseUrl: string;
+  corsOrigin: string;
   jwt: JwtConfig;
 }

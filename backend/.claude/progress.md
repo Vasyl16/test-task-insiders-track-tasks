@@ -58,9 +58,13 @@
   - `RefreshTokenDto.refreshToken`: added `@IsNotEmpty()` — previously an empty string passed `@IsString()` and fell through to a business-logic 401 instead of a validation 400.
   - `AuthController`: `login` and `refresh` now explicitly return `200 OK` (`@HttpCode(HttpStatus.OK)`) instead of Nest's default `201 Created` for `@Post()` — they don't create a resource, only `register` (201) and the implicit resource creation inside `refresh`'s rotation do.
   - Verified end-to-end against the live Neon DB: registering, then re-registering with a whitespace/case variant of the same email → 409 (not a silent duplicate); logging in with that variant → 200 with valid tokens; empty-string refresh token → 400 with a field-level validation message (not 401); a 100-character password → 400 (rejected before ever reaching bcrypt). Test data cleaned up afterward.
+  - Committed as `987bc96` (steps 3–8 together, since there was no clean intermediate checkpoint to split them by this round).
+- **Post-milestone: CORS.**
+  - Added `corsOrigin` to `AppConfig`, sourced from a new `CORS_ORIGIN` env var (defaults to `http://localhost:5173`, the Vite frontend's dev server). `main.ts` now calls `app.enableCors({ origin: ... })` using that value, and also switched `app.listen` to read the port from `ConfigService` instead of `process.env` directly for consistency.
+  - Deliberately a static allow-listed origin, not a wildcard or origin-reflecting function — verified with `curl` that the frontend's origin gets a matching `Access-Control-Allow-Origin` header (both on preflight and the actual response) while a different `Origin` still receives the same *fixed* header value, which a real browser would treat as a mismatch and block (curl itself doesn't enforce CORS, so this only shows correctly in a browser, not in curl output).
 
 ## Current Task
-- V1 Authentication is feature-complete against the original requirements (registration, login, JWT access tokens, refresh tokens with rotation, logout, bcrypt hashing, JWT guard, current-user endpoint, DTO validation, standardized error handling). All 8 planned steps are done. Nothing has been committed since `720dd4a` (steps 1–2) — steps 3–8 are about to be committed together as one unit, since they were implemented back-to-back without intermediate commits this round (unlike steps 1–2, there's no clean checkpoint to split them by).
+- V1 Authentication is feature-complete against the original requirements (registration, login, JWT access tokens, refresh tokens with rotation, logout, bcrypt hashing, JWT guard, current-user endpoint, DTO validation, standardized error handling). CORS is now enabled for the frontend dev origin.
 
 ## Next Steps (V1 Authentication plan)
 1. ~~Database foundation: Prisma models + real PrismaService + migration.~~ (done)
