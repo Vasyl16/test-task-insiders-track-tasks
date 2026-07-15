@@ -13,7 +13,10 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  refreshTokens RefreshToken[]
+  refreshTokens        RefreshToken[]
+  ownedWorkspaces      Workspace[]       @relation("WorkspaceOwner")
+  workspaceMemberships WorkspaceMember[]
+  createdProjects      Project[]         @relation("ProjectCreator")
 }
 
 model RefreshToken {
@@ -26,4 +29,54 @@ model RefreshToken {
   createdAt DateTime  @default(now())
 
   @@index([userId])
+}
+
+enum WorkspaceRole {
+  OWNER
+  MEMBER
+}
+
+model Workspace {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  ownerId     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  owner    User              @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  members  WorkspaceMember[]
+  projects Project[]
+
+  @@index([ownerId])
+}
+
+model WorkspaceMember {
+  id          String        @id @default(uuid())
+  workspaceId String
+  userId      String
+  role        WorkspaceRole
+  createdAt   DateTime      @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+}
+
+model Project {
+  id          String   @id @default(uuid())
+  workspaceId String
+  name        String
+  description String?
+  createdBy   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  creator   User      @relation("ProjectCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+
+  @@index([workspaceId])
+  @@index([createdBy])
 }
