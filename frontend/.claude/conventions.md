@@ -7,13 +7,14 @@
 - Prefer readability over cleverness.
 
 ## Security Rules
-- Centralize token storage/access in `api/axios/token-manager.ts` — never read/write tokens directly elsewhere.
+- Centralize token storage/access in `shared/api/axios/token-manager.ts` — never read/write tokens directly elsewhere.
 - Never log tokens or passwords.
 - Clear tokens on logout and on unrecoverable refresh failure; redirect to login.
 
 ## API Conventions
-- All HTTP calls go through the shared Axios instance — no ad-hoc `fetch`/`axios` in components.
-- Server state lives in the query/mutation layer; client-only state lives in `store/`. Don't duplicate one into the other.
+- All HTTP calls go through the shared Axios instance in `shared/api/axios` — no ad-hoc `fetch`/`axios` in components, pages, or features.
+- Server state lives in `shared/api/queries` + `shared/api/services`; client-only state lives in `store/`. Don't duplicate one into the other.
+- Pages don't call HTTP directly: Page → `shared/api/services` hook → `shared/api/queries` → `shared/api/axios` → backend.
 
 ## Development Workflow
 Before every task:

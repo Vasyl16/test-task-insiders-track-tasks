@@ -1,9 +1,9 @@
 import { createBrowserRouter, Navigate } from 'react-router'
 import { AuthLayout } from '../layouts/AuthLayout'
 import { DashboardLayout } from '../layouts/DashboardLayout'
-import { LoginPage } from '../pages/auth/LoginPage'
-import { RegisterPage } from '../pages/auth/RegisterPage'
-import { DashboardPage } from '../pages/dashboard/DashboardPage'
+import { LoginPage } from '../../pages/auth/LoginPage'
+import { RegisterPage } from '../../pages/auth/RegisterPage'
+import { DashboardPage } from '../../pages/dashboard/DashboardPage'
 import { ProtectedRoute } from './ProtectedRoute'
 import { PublicRoute } from './PublicRoute'
 

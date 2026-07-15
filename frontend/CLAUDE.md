@@ -14,30 +14,31 @@ It contains only frontend-related guidance and should be used as the reference f
 - Axios (HTTP client)
 - TanStack Query (server state / caching)
 - React Router (v8 — imported from the `react-router` package directly; `react-router-dom` is the legacy/frozen name as of this version)
-- React Hook Form + Zod (+ `@hookform/resolvers` for the RHF↔Zod glue) — installed, not yet used by any real form (placeholders only so far)
+- React Hook Form + Zod (+ `@hookform/resolvers` for the RHF↔Zod glue) — used by the login/register forms in `features/auth`
 
 ## Frontend Architecture
 
 The frontend is a single-page app that talks to the backend task tracker API (`../backend`) over REST, authenticated with a short-lived JWT access token plus a rotating refresh token.
 
-### Layer responsibilities
-- `api/axios`: one configured Axios instance (`instance.ts`), request/response interceptors (`interceptors.ts`) that attach the access token and handle 401s by refreshing, and a token manager (`token-manager.ts`) that is the single place tokens are read from/written to.
-- `api/queries` + `api/mutations`: one file per domain (auth, workspace, project, task, comment). Plain functions that call the API through the shared Axios instance — no React or UI concerns here.
-- `api/services`: React hooks per domain (`useAuth`, `useWorkspace`, ...) that wrap the queries/mutations for use in components.
-- `api/queryKeys.ts`: centralized cache key factory shared by queries and mutations, so invalidation stays consistent.
-- `components/ui`: small, reusable, presentation-only building blocks.
-- `components/common`: shared components that aren't pure UI primitives (layout helpers, error boundaries, etc.).
-- `components/forms`: form components, generally paired with validation.
-- `pages`: one folder per route area, composed from components.
-- `layouts`: page shells shared across routes (e.g. the authenticated app shell).
-- `routes`: router configuration and route guards (`ProtectedRoute`, `PublicRoute`).
-- `providers`: app-wide context providers, composed once near the root (`QueryProvider`, `ThemeProvider`, `AuthProvider`).
-- `hooks`: generic, reusable hooks not tied to a specific API domain.
-- `store`: global client-only state. Server state belongs in `api/queries`, not here.
-- `context`: raw React context definitions, generally consumed via a provider.
-- `constants`, `types`, `utils`: shared constants, shared TypeScript types, and pure helper functions.
+Architecture is a pragmatic Feature-Sliced Design (`app / pages / widgets / features / entities / shared`) combined with a centralized API layer in `shared/api` — HTTP code is not split per-feature. See `.claude/architecture.md` for the full rationale.
 
-Business/domain logic (e.g. "is this task overdue") should live close to where it's used (a hook or a query's `select`), not scattered across components.
+### Layer responsibilities
+- `app/`: application-wide composition — root `App.tsx`, `providers/` (`QueryProvider`, composed once near the root), `routes/` (router config, `ProtectedRoute`/`PublicRoute` guards), `layouts/` (shared page shells, e.g. the authenticated app shell). Nothing domain-specific lives here.
+- `pages/`: one folder per route area, composed from features/widgets/entities. Pages never call HTTP directly.
+- `widgets/`: composite UI blocks spanning multiple features/entities. First one: `widgets/app-header` — the dashboard header (current user email + logout), extracted from `DashboardLayout` since it composes an entity (user) with a feature (auth).
+- `features/`: one folder per user-facing capability (auth, workspace, project, task, comment), each owning only its own components/hooks/schemas/types/utils. Created lazily. First one: `features/auth` — `LoginForm`/`RegisterForm` (React Hook Form + Zod) plus their schemas.
+- `entities/`: domain models shared across the app (e.g. `entities/user/model/user.ts`). One folder per backend domain as each becomes real.
+- `shared/api/axios`: one configured Axios instance (`instance.ts`), request/response interceptors (`interceptors.ts`) that attach the access token and handle 401s by refreshing, and a token manager (`token-manager.ts`) that is the single place tokens are read from/written to.
+- `shared/api/queries`: one file per domain (auth, workspace, project, task, comment). Plain functions that call the API through the shared Axios instance — no React or UI concerns, and no query/mutation split (a domain file holds both reads and writes, e.g. `getMe`, `login`, `register`, `logoutRequest`).
+- `shared/api/services`: React Query hooks per domain (`useAuth`, `useLogin`, `useRegister`, `useWorkspace`, ...) that wrap `queries` for use in components.
+- `shared/api/queryClient.ts`: the shared `QueryClient` instance.
+- `shared/api/queryKeys.ts`: centralized cache key factory shared by queries, so invalidation stays consistent.
+- `shared/lib`: generic, non-domain-specific helpers. First one: `getErrorMessage.ts` (extracts a backend error message from an Axios error).
+- `shared/ui`: presentation-only primitives with no domain logic — `Button`, `Input`, `FormError`. Used by `features/auth`'s forms and `widgets/app-header` so far.
+- `shared/hooks`, `shared/utils`, `shared/constants`: generic reusable code not tied to a domain — no business logic. Created as content actually exists.
+- `store/` (not yet created): global client/UI-only state (theme, sidebar, modal visibility, etc.). **Never the authenticated user, `isAuthenticated`, or any other server-originated data** — that's server state and belongs in the query cache via `shared/api/services`, full stop, no exceptions. (This was tried once and reverted — see `progress.md`'s "Step 2 correction" entry for why.)
+
+Business/domain logic (e.g. "is this task overdue") should live close to where it's used (a feature hook or a query's `select`), not scattered across components.
 
 ## Folder Structure
 
@@ -46,42 +47,56 @@ frontend/
 ├── .claude/
 ├── public/
 ├── src/
-│   ├── api/
-│   │   ├── axios/
-│   │   │   ├── instance.ts
-│   │   │   ├── interceptors.ts
-│   │   │   └── token-manager.ts
-│   │   ├── queries/
-│   │   ├── services/
-│   │   ├── mutations/
-│   │   └── queryKeys.ts
-│   ├── components/
-│   │   ├── ui/
-│   │   ├── common/
-│   │   └── forms/
+│   ├── app/
+│   │   ├── providers/
+│   │   ├── routes/
+│   │   ├── layouts/
+│   │   └── App.tsx
 │   ├── pages/
-│   ├── layouts/
-│   ├── routes/
-│   ├── providers/
-│   ├── hooks/
-│   ├── store/
-│   ├── context/
-│   ├── constants/
-│   ├── types/
-│   ├── utils/
+│   │   ├── auth/
+│   │   └── dashboard/
+│   ├── widgets/
+│   │   └── app-header/
+│   │       └── ui/
+│   ├── features/
+│   │   └── auth/
+│   │       ├── components/
+│   │       └── schemas/
+│   ├── entities/
+│   │   └── user/
+│   │       └── model/
+│   ├── shared/
+│   │   ├── api/
+│   │   │   ├── axios/
+│   │   │   │   ├── instance.ts
+│   │   │   │   ├── interceptors.ts
+│   │   │   │   └── token-manager.ts
+│   │   │   ├── queries/
+│   │   │   ├── services/
+│   │   │   ├── queryClient.ts
+│   │   │   └── queryKeys.ts
+│   │   ├── lib/
+│   │   │   └── getErrorMessage.ts
+│   │   ├── ui/
+│   │   │   ├── Button.tsx
+│   │   │   ├── Input.tsx
+│   │   │   └── FormError.tsx
+│   │   ├── hooks/
+│   │   ├── utils/
+│   │   └── constants/
 │   ├── assets/
 │   ├── styles/
-│   ├── App.tsx
 │   └── main.tsx
 └── vite.config.ts
 ```
 
-Not every folder needs to exist before it has content — create a folder when the first file that belongs in it is added, not preemptively.
+Not every folder needs to exist before it has content — create a folder when the first file that belongs in it is added, not preemptively. `shared/ui`, `shared/hooks`, `shared/utils`, `shared/constants` are intentionally absent from the current tree; `widgets/`, `features/`, and `shared/lib` now each hold their first real content.
 
 ## API Conventions
-- All requests go through the single configured Axios instance in `api/axios/instance.ts`. No ad-hoc `fetch`/`axios` calls in components.
-- Server state (anything that comes from the API) is owned by the query/mutation layer and consumed via `api/services` hooks — never duplicated into `store/`.
+- All requests go through the single configured Axios instance in `shared/api/axios/instance.ts`. No ad-hoc `fetch`/`axios` calls in components, pages, or features.
+- Server state (anything that comes from the API) is owned by `shared/api/queries` and consumed via `shared/api/services` hooks — never duplicated into `store/`. This includes the authenticated user: `useAuth()` (`shared/api/services/useAuth.ts`) wraps a `["auth","me"]` query; `isAuthenticated` is derived as `Boolean(user)`, never stored separately.
 - The access token is attached automatically by a request interceptor. A response interceptor handles `401`s by attempting one refresh (`POST /auth/refresh`) and retrying the original request; if the refresh itself fails, clear tokens and redirect to login.
+- When a mutation needs to update auth state immediately (login, register, logout), write the result straight into the cache with `queryClient.setQueryData(queryKeys.auth.me, ...)`. Don't use `removeQueries`/`invalidateQueries` for this — confirmed by testing in a real browser that `removeQueries` does not reliably re-render already-mounted `useQuery` observers on this stack (`@tanstack/react-query` 5.x + React 19), while `setQueryData` does.
 
 ## Security Rules
 - Centralize token storage in `token-manager.ts` so the storage mechanism (memory vs `localStorage` vs elsewhere) can change in one place.
@@ -113,4 +128,4 @@ Do not implement future milestones or unconfirmed library choices unless explici
 
 ## Current Milestone
 
-Current version: V1 Authentication UI — login/register forms, token handling, protected routing, and a current-user view, wired to the backend's V1 Authentication API.
+Current version: V1 Authentication UI — login/register forms, token handling, protected routing, and a current-user view, wired to the backend's V1 Authentication API. Functionally complete and verified against the live backend; not yet committed.
