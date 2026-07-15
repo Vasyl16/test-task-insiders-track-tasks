@@ -38,6 +38,7 @@ export function CreateWorkspaceForm({ onCreated }: CreateWorkspaceFormProps) {
       <Input
         id="workspace-name"
         label="Workspace name"
+        autoFocus
         error={errors.name?.message}
         {...register('name')}
       />
@@ -51,7 +52,7 @@ export function CreateWorkspaceForm({ onCreated }: CreateWorkspaceFormProps) {
 
       <FormError message={errors.root?.message} />
 
-      <Button type="submit" disabled={isSubmitting}>
+      <Button type="submit" disabled={isSubmitting} className="w-full">
         {isSubmitting ? 'Creating…' : 'Create workspace'}
       </Button>
     </form>

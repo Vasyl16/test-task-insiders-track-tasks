@@ -39,6 +39,7 @@ export function CreateProjectForm({ workspaceId, onCreated }: CreateProjectFormP
       <Input
         id="project-name"
         label="Project name"
+        autoFocus
         error={errors.name?.message}
         {...register('name')}
       />
@@ -52,7 +53,7 @@ export function CreateProjectForm({ workspaceId, onCreated }: CreateProjectFormP
 
       <FormError message={errors.root?.message} />
 
-      <Button type="submit" disabled={isSubmitting}>
+      <Button type="submit" disabled={isSubmitting} className="w-full">
         {isSubmitting ? 'Creating…' : 'Create project'}
       </Button>
     </form>

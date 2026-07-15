@@ -1,1 +1,60 @@
 @import "tailwindcss";
+
+/*
+  Design system: "The Ledger Desk" — workspaces are ledgers, projects are
+  entries logged inside them. Dark ink-navy desk canvas; warm parchment
+  paper for cards/modals; a brass corner tab is the one signature shape
+  that repeats across workspace cards, modals, and the header.
+*/
+@theme {
+  --color-desk: #161c26;
+  --color-desk-raised: #1e2634;
+  --color-paper: #eae3d2;
+  --color-paper-dim: #ddd4bd;
+  --color-ink: #1b2129;
+  --color-brass: #b8863b;
+  --color-brass-light: #d1a35f;
+  --color-brass-deep: #96692d;
+  --color-oxblood: #8c3b32;
+  --color-fog: #8791a3;
+
+  --font-display: "Fraunces", "Iowan Old Style", serif;
+  --font-body: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+@layer base {
+  body {
+    @apply bg-desk font-body text-ink antialiased;
+  }
+
+  ::selection {
+    background-color: var(--color-brass);
+    color: var(--color-desk);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brass);
+    outline-offset: 2px;
+  }
+}
+
+@keyframes ledger-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes ledger-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}

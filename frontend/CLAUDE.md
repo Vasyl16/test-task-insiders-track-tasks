@@ -34,7 +34,7 @@ Architecture is a pragmatic Feature-Sliced Design (`app / pages / widgets / feat
 - `shared/api/queryClient.ts`: the shared `QueryClient` instance.
 - `shared/api/queryKeys.ts`: centralized cache key factory shared by queries, so invalidation stays consistent.
 - `shared/lib`: generic, non-domain-specific helpers. First one: `getErrorMessage.ts` (extracts a backend error message from an Axios error).
-- `shared/ui`: presentation-only primitives with no domain logic — `Button` (`variant: 'primary' | 'ghost' | 'logout'`), `Input`, `FormError`. Used by `features/auth`/`features/workspace`/`features/project`'s forms and `widgets/app-header`.
+- `shared/ui`: presentation-only primitives with no domain logic — `Button` (`variant: 'primary' | 'ghost' | 'logout' | 'nav'`), `Input`, `FormError`, `Modal` (portal-rendered dialog, Escape/backdrop to close). Used by `features/auth`/`features/workspace`/`features/project`'s forms and `widgets/app-header`. See "Visual Design System" in `architecture.md` for the token system these are built on.
 - `shared/hooks`, `shared/utils`, `shared/constants`: generic reusable code not tied to a domain — no business logic. Created as content actually exists.
 - `store/` (not yet created): global client/UI-only state (theme, sidebar, modal visibility, etc.). **Never the authenticated user, `isAuthenticated`, or any other server-originated data** — that's server state and belongs in the query cache via `shared/api/services`, full stop, no exceptions. (This was tried once and reverted — see `progress.md`'s "Step 2 correction" entry for why.)
 
@@ -91,7 +91,8 @@ frontend/
 │   │   ├── ui/
 │   │   │   ├── Button.tsx
 │   │   │   ├── Input.tsx
-│   │   │   └── FormError.tsx
+│   │   │   ├── FormError.tsx
+│   │   │   └── Modal.tsx
 │   │   ├── hooks/
 │   │   ├── utils/
 │   │   └── constants/
@@ -140,4 +141,4 @@ Do not implement future milestones or unconfirmed library choices unless explici
 
 ## Current Milestone
 
-Current version: Workspace + Project UI (matching the backend's V2/V3). V1 Authentication UI (login/register, token handling, protected routing, current-user view) is complete. Workspace/Project UI adds: list/create/view/delete for both, nested routing (`/workspaces/:workspaceId`), client-side owner/creator gating on destructive actions (the backend is the real enforcement). Not yet built: edit/rename UI for either, and member invitation UI. Functionally complete and verified against the live backend; not yet committed.
+Current version: V4 Task Management UI (in progress). V1 Authentication UI and V2/V3 Workspace + Project UI are complete and committed — list/create/view/delete for both, nested routing (`/workspaces/:workspaceId`), client-side owner/creator gating on destructive actions (the backend is the real enforcement), plus a full visual redesign ("The Ledger Desk" — see `architecture.md`). Not yet built: edit/rename UI, member invitation UI, and the Task UI itself (backend is done; needs a new project detail page since projects currently have no page of their own, only list rows).

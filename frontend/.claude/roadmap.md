@@ -4,12 +4,12 @@
 Aligned with the backend's actual versioning (`backend/.claude/roadmap.md`), not the original guess of "V2 Task Management UI" — Workspaces and Projects turned out to be their own versions.
 
 - V1 Authentication UI (done)
-- V2/V3 Workspace + Project UI (done — create/list/view/delete; no edit/rename or member-invitation UI yet)
-- V4 Task Management UI
+- V2/V3 Workspace + Project UI (done — create/list/view/delete, plus a full visual redesign; no edit/rename or member-invitation UI yet)
+- V4 Task Management UI (in progress)
 - V5 Advanced Features UI
 
 ## Current Milestone
-V2/V3 Workspace + Project UI
+V4 Task Management UI
 
 ### V1 features (done)
 - Axios instance + interceptors + token manager, wired to the backend's JWT access/refresh flow
@@ -19,21 +19,21 @@ V2/V3 Workspace + Project UI
 - Logout
 
 ### V2/V3 features (done)
-- Dashboard lists the current user's workspaces; create-workspace form
-- Workspace detail page (`/workspaces/:workspaceId`): name/description, delete (owner-only), its projects
-- Create-project form; delete a project (creator-or-owner)
+- Dashboard lists the current user's workspaces; create-workspace form (in a modal)
+- Workspace detail page (`/workspaces/:workspaceId`): name/description, delete (owner-only), back link to dashboard, its projects as numbered ledger rows
+- Create-project form (in a modal); delete a project (creator-or-owner)
 - Client-side gating of destructive actions based on `ownerId`/`createdBy` (the backend remains the actual enforcement)
+- Full visual redesign ("The Ledger Desk" — see `architecture.md`): design tokens, a real `Modal` component, redesigned header/dashboard/workspace page
 
-### Explicitly deferred (not this milestone)
+### V4 features (in progress)
+- Backend is done (`../backend`): Task CRUD nested under `/workspaces/:workspaceId/projects/:projectId/tasks`, status enum, optional assignee
+- Frontend needs: a project detail page (`/workspaces/:workspaceId/projects/:projectId` — doesn't exist yet), task list/create/status/assignment UI, extending the ledger design system
+
+### Explicitly deferred (not yet built)
 - Editing/renaming a workspace or project (API supports it; no UI yet)
 - Member invitation UI (backend supports it; deliberately deferred per instruction)
 
 ## Future Versions
-### V4 Task Management UI
-- Task views within a project
-- Task CRUD forms
-- Task status flow UI
-
 ### V5 Advanced Features UI
 - Comments
 - Notifications

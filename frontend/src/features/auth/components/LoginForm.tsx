@@ -29,7 +29,7 @@ export function LoginForm() {
 
   return (
     <form onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="space-y-4" noValidate>
-      <h1 className="text-xl font-semibold">Login</h1>
+      <h1 className="font-display text-2xl font-medium text-ink">Log in</h1>
 
       <Input
         id="email"
@@ -55,9 +55,9 @@ export function LoginForm() {
         {isSubmitting ? 'Logging in…' : 'Log in'}
       </Button>
 
-      <p className="text-center text-sm text-gray-600">
+      <p className="text-center text-sm text-ink/60">
         Don&apos;t have an account?{' '}
-        <Link to="/register" className="font-medium text-gray-900">
+        <Link to="/register" className="font-medium text-brass hover:text-ink">
           Register
         </Link>
       </p>

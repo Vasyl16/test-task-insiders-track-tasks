@@ -3,47 +3,66 @@ import { Link } from 'react-router'
 import { CreateWorkspaceForm } from '../../features/workspace/components/CreateWorkspaceForm'
 import { useWorkspaces } from '../../shared/api/services/useWorkspaces'
 import { Button } from '../../shared/ui/Button'
+import { Modal } from '../../shared/ui/Modal'
 
 export function DashboardPage() {
   const { data: workspaces, isLoading } = useWorkspaces()
-  const [showCreateForm, setShowCreateForm] = useState(false)
+  const [isCreateOpen, setIsCreateOpen] = useState(false)
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">My Workspaces</h1>
-        <Button onClick={() => setShowCreateForm((prev) => !prev)}>
-          {showCreateForm ? 'Cancel' : 'New workspace'}
-        </Button>
+    <div>
+      <div className="flex items-end justify-between">
+        <div>
+          <p className="font-mono text-xs tracking-[0.2em] text-brass uppercase">
+            Ledger
+          </p>
+          <h1 className="mt-1 font-display text-3xl font-medium text-paper">
+            Your workspaces
+          </h1>
+        </div>
+        <Button onClick={() => setIsCreateOpen(true)}>New workspace</Button>
       </div>
 
-      {showCreateForm && (
-        <div className="max-w-sm rounded-lg border border-gray-200 bg-white p-4">
-          <CreateWorkspaceForm onCreated={() => setShowCreateForm(false)} />
+      {isLoading && (
+        <p className="mt-10 font-mono text-sm text-fog">Loading your workspaces…</p>
+      )}
+
+      {!isLoading && workspaces?.length === 0 && (
+        <div className="mt-10 rounded-2xl border border-dashed border-brass/30 p-10 text-center">
+          <p className="font-display text-lg text-paper">No workspaces yet</p>
+          <p className="mt-1 text-sm text-fog">
+            Open one to start logging projects against it.
+          </p>
         </div>
       )}
 
-      {isLoading && <p className="text-sm text-gray-600">Loading…</p>}
-
-      {!isLoading && workspaces?.length === 0 && (
-        <p className="text-sm text-gray-600">You don&apos;t have any workspaces yet.</p>
-      )}
-
-      <ul className="space-y-2">
+      <ul className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2">
         {workspaces?.map((workspace) => (
           <li key={workspace.id}>
             <Link
               to={`/workspaces/${workspace.id}`}
-              className="block rounded-lg border border-gray-200 bg-white p-4 transition-colors hover:border-gray-300"
+              className="group relative block rounded-2xl bg-paper p-6 shadow-lg shadow-black/20 transition-transform hover:-translate-y-0.5"
             >
-              <p className="font-medium">{workspace.name}</p>
+              <span
+                aria-hidden="true"
+                className="absolute -top-2 left-6 h-4 w-8 rounded-b-sm bg-brass shadow-sm transition-colors group-hover:bg-brass-light"
+              />
+              <p className="font-display text-xl font-medium text-ink">
+                {workspace.name}
+              </p>
               {workspace.description && (
-                <p className="text-sm text-gray-600">{workspace.description}</p>
+                <p className="mt-1.5 text-sm text-ink/60">{workspace.description}</p>
               )}
             </Link>
           </li>
         ))}
       </ul>
+
+      {isCreateOpen && (
+        <Modal title="New workspace" onClose={() => setIsCreateOpen(false)}>
+          <CreateWorkspaceForm onCreated={() => setIsCreateOpen(false)} />
+        </Modal>
+      )}
     </div>
   )
 }

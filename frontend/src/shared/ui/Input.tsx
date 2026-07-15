@@ -9,16 +9,19 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ label, error, id, className = '', ...props }, ref) => (
     <div>
-      <label htmlFor={id} className="block text-sm font-medium text-gray-700">
+      <label
+        htmlFor={id}
+        className="block font-mono text-xs tracking-wide text-ink/60 uppercase"
+      >
         {label}
       </label>
       <input
         ref={ref}
         id={id}
-        className={`mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm ${className}`.trim()}
+        className={`mt-1.5 w-full rounded-lg border border-ink/15 bg-paper px-3 py-2 font-body text-sm text-ink placeholder:text-ink/35 focus:border-brass focus:outline-none ${className}`.trim()}
         {...props}
       />
-      {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+      {error && <p className="mt-1.5 text-sm text-oxblood">{error}</p>}
     </div>
   ),
 )

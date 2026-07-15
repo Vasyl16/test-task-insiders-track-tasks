@@ -29,7 +29,9 @@ export function RegisterForm() {
 
   return (
     <form onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="space-y-4" noValidate>
-      <h1 className="text-xl font-semibold">Register</h1>
+      <h1 className="font-display text-2xl font-medium text-ink">
+        Create your account
+      </h1>
 
       <Input
         id="email"
@@ -64,9 +66,9 @@ export function RegisterForm() {
         {isSubmitting ? 'Creating account…' : 'Register'}
       </Button>
 
-      <p className="text-center text-sm text-gray-600">
+      <p className="text-center text-sm text-ink/60">
         Already have an account?{' '}
-        <Link to="/login" className="font-medium text-gray-900">
+        <Link to="/login" className="font-medium text-brass hover:text-ink">
           Log in
         </Link>
       </p>
