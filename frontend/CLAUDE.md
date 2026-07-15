@@ -34,7 +34,7 @@ Architecture is a pragmatic Feature-Sliced Design (`app / pages / widgets / feat
 - `shared/api/queryClient.ts`: the shared `QueryClient` instance.
 - `shared/api/queryKeys.ts`: centralized cache key factory shared by queries, so invalidation stays consistent.
 - `shared/lib`: generic, non-domain-specific helpers. First one: `getErrorMessage.ts` (extracts a backend error message from an Axios error).
-- `shared/ui`: presentation-only primitives with no domain logic — `Button` (`variant: 'primary' | 'ghost' | 'logout' | 'nav'`), `Input`, `Select` (same labeled treatment as `Input`, for dropdowns), `FormError`, `Modal` (portal-rendered dialog, Escape/backdrop to close). Used by `features/auth`/`features/workspace`/`features/project`/`features/task`'s forms and `widgets/app-header`. See "Visual Design System" in `architecture.md` for the token system these are built on.
+- `shared/ui`: presentation-only primitives with no domain logic — `Button` (`variant: 'primary' | 'ghost' | 'logout' | 'nav'`), `Input`, `Select` (native dropdown, same labeled treatment as `Input`), `Listbox` (fully custom dropdown — colored dot per option, custom panel — for when a native `<select>`'s option styling isn't enough; wire it up via React Hook Form's `Controller`, not `register()`), `FormError`, `Modal` (portal-rendered dialog, Escape/backdrop to close). Used by `features/auth`/`features/workspace`/`features/project`/`features/task`'s forms and `widgets/app-header`. See "Visual Design System" in `architecture.md` for the token system these are built on.
 - `shared/hooks`, `shared/utils`, `shared/constants`: generic reusable code not tied to a domain — no business logic. Created as content actually exists.
 - `store/` (not yet created): global client/UI-only state (theme, sidebar, modal visibility, etc.). **Never the authenticated user, `isAuthenticated`, or any other server-originated data** — that's server state and belongs in the query cache via `shared/api/services`, full stop, no exceptions. (This was tried once and reverted — see `progress.md`'s "Step 2 correction" entry for why.)
 
@@ -100,6 +100,7 @@ frontend/
 │   │   │   ├── Button.tsx
 │   │   │   ├── Input.tsx
 │   │   │   ├── Select.tsx
+│   │   │   ├── Listbox.tsx
 │   │   │   ├── FormError.tsx
 │   │   │   └── Modal.tsx
 │   │   ├── hooks/
@@ -150,4 +151,4 @@ Do not implement future milestones or unconfirmed library choices unless explici
 
 ## Current Milestone
 
-Current version: V4 Task Management UI. V1 Authentication, V2/V3 Workspace + Project UI, and V4 Task UI are all functionally complete — list/create/view/delete across workspaces/projects/tasks, nested routing (`/workspaces/:workspaceId`, `/workspaces/:workspaceId/projects/:projectId`), a drag-and-drop Kanban board for tasks (native HTML5 DnD, no new dependency) with status columns and LOW/MEDIUM/HIGH priority indicators, assignment (picked from the workspace's members), client-side owner/creator gating on destructive actions (the backend is the real enforcement), and a full visual redesign ("The Ledger Desk" — see `architecture.md`). Not yet built: edit/rename UI for any of the three entities, and member invitation UI.
+Current version: V4 Task Management UI. V1 Authentication, V2/V3 Workspace + Project UI, and V4 Task UI are all functionally complete — list/create/view/edit/delete across workspaces/projects/tasks, nested routing (`/workspaces/:workspaceId`, `/workspaces/:workspaceId/projects/:projectId`), a drag-and-drop Kanban board for tasks (native HTML5 DnD, no new dependency) with status columns and LOW/MEDIUM/HIGH priority (custom `Listbox` picker, colored top-border + text label on each card), assignment (picked from the workspace's members), client-side owner/creator gating on destructive actions (the backend is the real enforcement), and a full visual redesign ("The Ledger Desk" — see `architecture.md`). Not yet built: edit/rename UI for workspaces/projects, and member invitation UI.

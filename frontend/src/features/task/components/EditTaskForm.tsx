@@ -1,5 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Controller, useForm } from 'react-hook-form'
+import type { Task } from '../../../entities/task/model/task'
 import {
   TASK_PRIORITY_DOT_CLASSES,
   TASK_PRIORITY_LABELS,
@@ -7,8 +8,8 @@ import {
   taskPriorityValues,
   taskStatusValues,
 } from '../../../entities/task/model/task'
-import { useWorkspaceMembers } from '../../../shared/api/services/useWorkspaces'
-import { useCreateTask } from '../../../shared/api/services/useTasks'
+import type { WorkspaceMember } from '../../../entities/workspace/model/workspace-member'
+import { useUpdateTask } from '../../../shared/api/services/useTasks'
 import { getErrorMessage } from '../../../shared/lib/getErrorMessage'
 import { Button } from '../../../shared/ui/Button'
 import { FormError } from '../../../shared/ui/FormError'
@@ -23,25 +24,37 @@ const priorityOptions = taskPriorityValues.map((priority) => ({
   dotClassName: TASK_PRIORITY_DOT_CLASSES[priority],
 }))
 
-interface CreateTaskFormProps {
+interface EditTaskFormProps {
   workspaceId: string
   projectId: string
-  onCreated?: () => void
+  task: Task
+  members: WorkspaceMember[] | undefined
+  onSaved?: () => void
 }
 
-export function CreateTaskForm({ workspaceId, projectId, onCreated }: CreateTaskFormProps) {
-  const createTask = useCreateTask(workspaceId, projectId)
-  const { data: members } = useWorkspaceMembers(workspaceId)
+export function EditTaskForm({
+  workspaceId,
+  projectId,
+  task,
+  members,
+  onSaved,
+}: EditTaskFormProps) {
+  const updateTask = useUpdateTask(workspaceId, projectId)
   const {
     register,
     control,
     handleSubmit,
-    reset,
     formState: { errors, isSubmitting },
     setError,
   } = useForm<TaskFormValues>({
     resolver: zodResolver(taskSchema),
-    defaultValues: { status: 'TODO', priority: 'MEDIUM', assigneeId: '' },
+    defaultValues: {
+      title: task.title,
+      description: task.description ?? '',
+      status: task.status,
+      priority: task.priority,
+      assigneeId: task.assigneeId ?? '',
+    },
   })
 
   const onSubmit = async ({
@@ -52,18 +65,18 @@ export function CreateTaskForm({ workspaceId, projectId, onCreated }: CreateTask
     assigneeId,
   }: TaskFormValues) => {
     try {
-      await createTask.mutateAsync({
+      await updateTask.mutateAsync({
+        id: task.id,
         title,
         description,
         status,
         priority,
         assigneeId: assigneeId || null,
       })
-      reset({ title: '', description: '', status: 'TODO', priority: 'MEDIUM', assigneeId: '' })
-      onCreated?.()
+      onSaved?.()
     } catch (error) {
       setError('root', {
-        message: getErrorMessage(error, 'Could not create task.'),
+        message: getErrorMessage(error, 'Could not save task.'),
       })
     }
   }
@@ -71,7 +84,7 @@ export function CreateTaskForm({ workspaceId, projectId, onCreated }: CreateTask
   return (
     <form onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="space-y-4" noValidate>
       <Input
-        id="task-title"
+        id="edit-task-title"
         label="Task title"
         autoFocus
         error={errors.title?.message}
@@ -79,13 +92,18 @@ export function CreateTaskForm({ workspaceId, projectId, onCreated }: CreateTask
       />
 
       <Input
-        id="task-description"
+        id="edit-task-description"
         label="Description (optional)"
         error={errors.description?.message}
         {...register('description')}
       />
 
-      <Select id="task-status" label="Status" error={errors.status?.message} {...register('status')}>
+      <Select
+        id="edit-task-status"
+        label="Status"
+        error={errors.status?.message}
+        {...register('status')}
+      >
         {taskStatusValues.map((status) => (
           <option key={status} value={status}>
             {TASK_STATUS_LABELS[status]}
@@ -98,7 +116,7 @@ export function CreateTaskForm({ workspaceId, projectId, onCreated }: CreateTask
         control={control}
         render={({ field }) => (
           <Listbox
-            id="task-priority"
+            id="edit-task-priority"
             label="Priority"
             value={field.value}
             onChange={field.onChange}
@@ -109,7 +127,7 @@ export function CreateTaskForm({ workspaceId, projectId, onCreated }: CreateTask
       />
 
       <Select
-        id="task-assignee"
+        id="edit-task-assignee"
         label="Assignee (optional)"
         error={errors.assigneeId?.message}
         {...register('assigneeId')}
@@ -125,7 +143,7 @@ export function CreateTaskForm({ workspaceId, projectId, onCreated }: CreateTask
       <FormError message={errors.root?.message} />
 
       <Button type="submit" disabled={isSubmitting} className="w-full">
-        {isSubmitting ? 'Logging…' : 'Log task'}
+        {isSubmitting ? 'Saving…' : 'Save changes'}
       </Button>
     </form>
   )

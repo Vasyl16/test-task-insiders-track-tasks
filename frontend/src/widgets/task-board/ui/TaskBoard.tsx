@@ -1,13 +1,16 @@
 import { useState } from 'react'
 import type { DragEvent } from 'react'
+import { EditTaskForm } from '../../../features/task/components/EditTaskForm'
 import {
-  TASK_PRIORITY_DOT_CLASSES,
+  TASK_PRIORITY_BORDER_CLASSES,
+  TASK_PRIORITY_LABELS,
   TASK_STATUS_LABELS,
   taskStatusValues,
 } from '../../../entities/task/model/task'
 import type { Task, TaskStatus } from '../../../entities/task/model/task'
 import type { WorkspaceMember } from '../../../entities/workspace/model/workspace-member'
 import { useDeleteTask, useUpdateTask } from '../../../shared/api/services/useTasks'
+import { Modal } from '../../../shared/ui/Modal'
 
 interface TaskBoardProps {
   workspaceId: string
@@ -30,6 +33,7 @@ export function TaskBoard({
   const deleteTask = useDeleteTask(workspaceId, projectId)
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null)
   const [dragOverStatus, setDragOverStatus] = useState<TaskStatus | null>(null)
+  const [editingTask, setEditingTask] = useState<Task | null>(null)
 
   const memberEmailById = new Map(members?.map((member) => [member.user.id, member.user.email]))
 
@@ -100,32 +104,25 @@ export function TaskBoard({
                       setDraggedTaskId(task.id)
                     }}
                     onDragEnd={() => setDraggedTaskId(null)}
-                    className={`cursor-grab space-y-1.5 rounded-xl bg-paper p-3 shadow-md shadow-black/20 transition-opacity active:cursor-grabbing ${
+                    className={`cursor-grab space-y-1.5 rounded-xl border-t-4 bg-paper p-3 shadow-md shadow-black/20 transition-opacity active:cursor-grabbing ${TASK_PRIORITY_BORDER_CLASSES[task.priority]} ${
                       draggedTaskId === task.id ? 'opacity-40' : ''
                     }`}
                   >
-                    <div className="flex items-start gap-2">
-                      <span
-                        aria-hidden="true"
-                        title={`Priority: ${task.priority}`}
-                        className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${TASK_PRIORITY_DOT_CLASSES[task.priority]}`}
-                      />
-                      <p
-                        className={`min-w-0 flex-1 font-display text-base leading-snug text-ink ${task.status === 'DONE' ? 'line-through opacity-50' : ''}`}
-                      >
-                        {task.title}
-                      </p>
-                    </div>
-
-                    {task.description && (
-                      <p className="truncate pl-4 text-xs text-ink/60">{task.description}</p>
-                    )}
-
-                    <p className="pl-4 font-mono text-[11px] text-ink/40">
-                      {assigneeEmail ?? 'Unassigned'}
+                    <p
+                      className={`font-display text-base leading-snug text-ink ${task.status === 'DONE' ? 'line-through opacity-50' : ''}`}
+                    >
+                      {task.title}
                     </p>
 
-                    <div className="flex items-center justify-between gap-2 pt-1 pl-4">
+                    {task.description && (
+                      <p className="truncate text-xs text-ink/60">{task.description}</p>
+                    )}
+
+                    <p className="font-mono text-[11px] text-ink/40">
+                      {TASK_PRIORITY_LABELS[task.priority]} · {assigneeEmail ?? 'Unassigned'}
+                    </p>
+
+                    <div className="flex items-center justify-between gap-2 pt-1">
                       <label className="sr-only" htmlFor={`status-${task.id}`}>
                         Status (accessible alternative to dragging)
                       </label>
@@ -147,15 +144,25 @@ export function TaskBoard({
                         ))}
                       </select>
 
-                      {canManage && (
+                      <div className="flex items-center gap-3">
                         <button
                           type="button"
-                          onClick={() => void deleteTask.mutateAsync(task.id)}
-                          className="font-mono text-[11px] tracking-wide text-oxblood/70 uppercase transition-colors hover:text-oxblood"
+                          onClick={() => setEditingTask(task)}
+                          className="font-mono text-[11px] tracking-wide text-brass-deep uppercase transition-colors hover:text-brass"
                         >
-                          Remove
+                          Edit
                         </button>
-                      )}
+
+                        {canManage && (
+                          <button
+                            type="button"
+                            onClick={() => void deleteTask.mutateAsync(task.id)}
+                            className="font-mono text-[11px] tracking-wide text-oxblood/70 uppercase transition-colors hover:text-oxblood"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )
@@ -164,6 +171,18 @@ export function TaskBoard({
           </div>
         )
       })}
+
+      {editingTask && (
+        <Modal title="Edit task" onClose={() => setEditingTask(null)}>
+          <EditTaskForm
+            workspaceId={workspaceId}
+            projectId={projectId}
+            task={editingTask}
+            members={members}
+            onSaved={() => setEditingTask(null)}
+          />
+        </Modal>
+      )}
     </div>
   )
 }

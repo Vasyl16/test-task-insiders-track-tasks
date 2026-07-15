@@ -27,13 +27,14 @@ V4 Task Management UI is functionally complete; picking the next milestone is op
 
 ### V4 features (done)
 - Project detail page (`/workspaces/:workspaceId/projects/:projectId`, new) showing that project's tasks as a drag-and-drop Kanban board (`widgets/task-board`), one column per status
-- Create-task form (in a modal): title, description, status (defaults `TODO`), priority (defaults `MEDIUM`), assignee (picked from the workspace's members)
+- Create-task form (in a modal): title, description, status (defaults `TODO`), priority (defaults `MEDIUM`, via a custom `Listbox` picker), assignee (picked from the workspace's members)
+- Edit-task form (in a modal, pre-filled): same fields as create, open to any workspace member
 - Drag a card between columns to change status, or use the accessible `<select>` fallback on the card (any workspace member can do this, matching the backend's collaborative-update rule)
-- Priority shown as a colored dot (green/amber/red for low/medium/high)
+- Priority shown as a colored top-border on the card plus a text label (green/amber/red for low/medium/high)
 - Delete a task (creator-or-owner, same pattern as Project)
 
 ### Explicitly deferred (not yet built)
-- Editing/renaming a workspace, project, or task's title/description (status/assignee updates exist for tasks; full edit forms don't, for any of the three)
+- Editing/renaming a workspace or project's title/description (tasks now have full editing; workspaces/projects still don't)
 - Member invitation UI (backend supports it, and `useWorkspaceMembers` now exists frontend-side from building the assignee dropdown — less new plumbing needed than before, but still not built)
 
 ## Future Versions

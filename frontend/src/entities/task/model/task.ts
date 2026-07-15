@@ -26,6 +26,14 @@ export const TASK_PRIORITY_DOT_CLASSES: Record<TaskPriority, string> = {
   HIGH: 'bg-oxblood',
 }
 
+// Same colors, as a top-border utility — used on the Kanban card itself
+// instead of a dot indicator.
+export const TASK_PRIORITY_BORDER_CLASSES: Record<TaskPriority, string> = {
+  LOW: 'border-t-moss',
+  MEDIUM: 'border-t-brass',
+  HIGH: 'border-t-oxblood',
+}
+
 export interface Task {
   id: string
   projectId: string
