@@ -1,6 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@prisma/prisma.service';
-import { Workspace, WorkspaceMember, WorkspaceRole } from '@prisma/client';
+import {
+  User,
+  Workspace,
+  WorkspaceMember,
+  WorkspaceRole,
+} from '@prisma/client';
+
+type WorkspaceMemberWithUser = WorkspaceMember & {
+  user: Pick<User, 'id' | 'email'>;
+};
 
 @Injectable()
 export class WorkspacesRepository {
@@ -49,6 +58,31 @@ export class WorkspacesRepository {
   ): Promise<WorkspaceMember | null> {
     return this.prisma.workspaceMember.findUnique({
       where: { workspaceId_userId: { workspaceId, userId } },
+    });
+  }
+
+  findUserByEmail(email: string): Promise<User | null> {
+    return this.prisma.user.findUnique({ where: { email } });
+  }
+
+  addMember(
+    workspaceId: string,
+    userId: string,
+    role: WorkspaceRole,
+  ): Promise<WorkspaceMemberWithUser> {
+    return this.prisma.workspaceMember.create({
+      data: { workspaceId, userId, role },
+      include: { user: { select: { id: true, email: true } } },
+    });
+  }
+
+  findMembersForWorkspace(
+    workspaceId: string,
+  ): Promise<WorkspaceMemberWithUser[]> {
+    return this.prisma.workspaceMember.findMany({
+      where: { workspaceId },
+      include: { user: { select: { id: true, email: true } } },
+      orderBy: { createdAt: 'asc' },
     });
   }
 

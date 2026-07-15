@@ -95,13 +95,22 @@
   - `projects.controller.ts`: `@UseGuards(JwtAuthGuard)` at the class level, `@Param('workspaceId')` extracted from the nested path on every handler.
   - Verified: `tsc --noEmit` clean, `npm run build` clean. Manually tested end-to-end against the live Neon DB with three users (owner, member, outsider) and a real workspace: 401 unauthenticated; 400 empty name; 404 creating under a nonexistent workspace; 403 outsider create; 201 create with correct `workspaceId`/`createdBy`; list scoped correctly per membership (outsider 403); get-by-id 200/403/404; a seeded `MEMBER` row can read (200) and create their own project (201), cannot update/delete an**other** member's project (403), but *can* update/delete their **own**; the workspace owner can override and update/delete a member's project too; an outsider gets 403 on every mutation; update/delete on a nonexistent project id → 404. All 22 assertions passed on the first fully-run attempt (an earlier run crashed on a script bug unrelated to the API — missing `dotenv` import in the test script itself — which left one stray workspace/project in the DB; found and cleaned up afterward along with the associated test users).
   - Same lint side-effect as before (`eslint --fix` reformatting `auth.service.ts`/`all-exceptions.filter.ts`) — reverted again to keep the diff scoped to Projects.
+  - Committed in 3 stages, matching the 3 phases of work: schema/migration (`be77c83`), Workspace API (`68e45e1`), Project API + docs (`cb16ba7`).
+- **V2 follow-up — Workspace member invitation.** Picked as the next step over starting V4 Task Management, since it needed no new schema (`WorkspaceMember`/`WorkspaceRole` already existed) and was explicitly named as deferred in the original permission model ("owner: ... invite members (later)").
+  - `dto/invite-member.dto.ts`: `email` only, `@IsEmail()`.
+  - `dto/workspace-member-response.dto.ts`: `id`, `workspaceId`, `role`, `createdAt`, plus a nested `user: { id, email }` — the invite/list endpoints are far more useful if the caller doesn't have to separately resolve `userId` → email.
+  - `workspaces.repository.ts`: added `findUserByEmail`, `addMember` (creates a `WorkspaceMember` row, `include`s the user), `findMembersForWorkspace` (same, for listing). `findUserByEmail` looks up the `User` table directly rather than reusing `AuthRepository`, keeping modules decoupled — same precedent set by `ProjectsRepository` duplicating small Workspace queries.
+  - `workspaces.service.ts`: added `inviteMember` (owner-only; 404 if the workspace doesn't exist, 403 if the caller isn't owner, 404 if no user has that email, 409 if they're already a member, otherwise creates a `MEMBER` row) and `listMembers` (member-or-owner read, same as other read endpoints).
+  - `workspaces.controller.ts`: `POST /workspaces/:id/members` (invite) and `GET /workspaces/:id/members` (list) — the list endpoint wasn't explicitly requested but was added since there'd be no way to see who's actually a member otherwise, and it's read-only so it doesn't expand the permission model.
+  - Invited members always get the `MEMBER` role — there's no way to invite a second `OWNER` (matches the schema's implicit assumption of one owner per workspace via `Workspace.ownerId`).
+  - Verified end-to-end against the live DB: 401/400/404/403/409 on every failure path (nonexistent workspace, non-owner inviting, unknown email, duplicate invite), successful invite returns the correct role and nested user email, the invited user can immediately read the workspace and appears in the member list, the invited member cannot invite others (not owner), and an outsider can't list members either. All 13 assertions passed. Test data cleaned up afterward.
   - Not committed — held back pending review.
 
 ## Current Task
-- V2 Workspaces and V3 Projects both have complete, verified CRUD APIs. Both are uncommitted, pending review.
+- V2 Workspaces (including member invitation) and V3 Projects all have complete, verified CRUD APIs. The invitation work is uncommitted, pending review; everything before it is committed.
 
 ## Next Steps
-- Awaiting explicit instruction. Likely candidates: workspace member invitation (explicitly deferred so far), Task Management (V4), or confirming/adjusting the Project permission model above if it doesn't match what was intended.
+- Awaiting explicit instruction. Likely candidates: Task Management (V4, would need its own schema/migration first — no `Task` model exists yet), or confirming/adjusting the Project permission model from the previous entry if it doesn't match what was intended.
 
 ## Important Notes
 - Keep all future work scoped to the current milestone unless explicitly requested.

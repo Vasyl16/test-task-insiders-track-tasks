@@ -8,7 +8,7 @@
 - V5 Advanced Features
 
 ## Current Milestone
-V2 Workspaces and V3 Projects both complete (schema + full CRUD APIs). Neither has member invitation yet — the only way to join a workspace today is by creating it.
+V2 Workspaces (including member invitation) and V3 Projects both complete (schema + full CRUD APIs).
 
 ### V1 features (done)
 - User registration
@@ -21,7 +21,7 @@ V2 Workspaces and V3 Projects both complete (schema + full CRUD APIs). Neither h
 - Workspace CRUD (create, list-mine, get-by-id, update, delete)
 - Workspace membership, with an `OWNER` / `MEMBER` role, auto-created on workspace creation
 - Authorization: owner-only write access, member-only read access, no access for non-members
-- Explicitly deferred (out of this milestone): member invitation/management endpoints
+- Member invitation (`POST /workspaces/:id/members`, by email — invited users always join as `MEMBER`) and member listing (`GET /workspaces/:id/members`)
 
 ### V3 features (done)
 - Project CRUD (create, list-for-workspace, get-by-id, update, delete), nested under `/workspaces/:workspaceId/projects`
