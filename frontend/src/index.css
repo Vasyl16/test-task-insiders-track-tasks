@@ -17,6 +17,10 @@
   --color-brass-deep: #96692d;
   --color-oxblood: #8c3b32;
   --color-fog: #8791a3;
+  /* Priority signal (traffic-light semantics, not brand accents): low reuses
+     this moss green; medium/high deliberately reuse brass/oxblood below
+     rather than adding two more named colors. */
+  --color-moss: #5b7a5e;
 
   --font-display: "Fraunces", "Iowan Old Style", serif;
   --font-body: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;

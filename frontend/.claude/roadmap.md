@@ -26,9 +26,10 @@ V4 Task Management UI is functionally complete; picking the next milestone is op
 - Full visual redesign ("The Ledger Desk" — see `architecture.md`): design tokens, a real `Modal` component, redesigned header/dashboard/workspace page
 
 ### V4 features (done)
-- Project detail page (`/workspaces/:workspaceId/projects/:projectId`, new) showing that project's tasks as numbered ledger rows
-- Create-task form (in a modal): title, description, status (defaults `TODO`), assignee (picked from the workspace's members)
-- Inline status change directly on each task row (any workspace member can do this, matching the backend's collaborative-update rule)
+- Project detail page (`/workspaces/:workspaceId/projects/:projectId`, new) showing that project's tasks as a drag-and-drop Kanban board (`widgets/task-board`), one column per status
+- Create-task form (in a modal): title, description, status (defaults `TODO`), priority (defaults `MEDIUM`), assignee (picked from the workspace's members)
+- Drag a card between columns to change status, or use the accessible `<select>` fallback on the card (any workspace member can do this, matching the backend's collaborative-update rule)
+- Priority shown as a colored dot (green/amber/red for low/medium/high)
 - Delete a task (creator-or-owner, same pattern as Project)
 
 ### Explicitly deferred (not yet built)

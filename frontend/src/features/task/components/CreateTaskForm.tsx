@@ -1,6 +1,11 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
-import { TASK_STATUS_LABELS, taskStatusValues } from '../../../entities/task/model/task'
+import {
+  TASK_PRIORITY_LABELS,
+  TASK_STATUS_LABELS,
+  taskPriorityValues,
+  taskStatusValues,
+} from '../../../entities/task/model/task'
 import { useWorkspaceMembers } from '../../../shared/api/services/useWorkspaces'
 import { useCreateTask } from '../../../shared/api/services/useTasks'
 import { getErrorMessage } from '../../../shared/lib/getErrorMessage'
@@ -27,18 +32,25 @@ export function CreateTaskForm({ workspaceId, projectId, onCreated }: CreateTask
     setError,
   } = useForm<TaskFormValues>({
     resolver: zodResolver(taskSchema),
-    defaultValues: { status: 'TODO', assigneeId: '' },
+    defaultValues: { status: 'TODO', priority: 'MEDIUM', assigneeId: '' },
   })
 
-  const onSubmit = async ({ title, description, status, assigneeId }: TaskFormValues) => {
+  const onSubmit = async ({
+    title,
+    description,
+    status,
+    priority,
+    assigneeId,
+  }: TaskFormValues) => {
     try {
       await createTask.mutateAsync({
         title,
         description,
         status,
+        priority,
         assigneeId: assigneeId || null,
       })
-      reset({ title: '', description: '', status: 'TODO', assigneeId: '' })
+      reset({ title: '', description: '', status: 'TODO', priority: 'MEDIUM', assigneeId: '' })
       onCreated?.()
     } catch (error) {
       setError('root', {
@@ -68,6 +80,19 @@ export function CreateTaskForm({ workspaceId, projectId, onCreated }: CreateTask
         {taskStatusValues.map((status) => (
           <option key={status} value={status}>
             {TASK_STATUS_LABELS[status]}
+          </option>
+        ))}
+      </Select>
+
+      <Select
+        id="task-priority"
+        label="Priority"
+        error={errors.priority?.message}
+        {...register('priority')}
+      >
+        {taskPriorityValues.map((priority) => (
+          <option key={priority} value={priority}>
+            {TASK_PRIORITY_LABELS[priority]}
           </option>
         ))}
       </Select>

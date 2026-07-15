@@ -7,12 +7,32 @@ export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
   DONE: 'Done',
 }
 
+export const taskPriorityValues = ['LOW', 'MEDIUM', 'HIGH'] as const
+export type TaskPriority = (typeof taskPriorityValues)[number]
+
+export const TASK_PRIORITY_LABELS: Record<TaskPriority, string> = {
+  LOW: 'Low',
+  MEDIUM: 'Medium',
+  HIGH: 'High',
+}
+
+// Traffic-light semantics — a scannable signal, not a brand accent. Applied
+// as Tailwind utility classes (e.g. `bg-${TASK_PRIORITY_DOT_COLOR.LOW}`
+// won't work with dynamic interpolation, so consumers use this map directly
+// as a lookup, not string-templated).
+export const TASK_PRIORITY_DOT_CLASSES: Record<TaskPriority, string> = {
+  LOW: 'bg-moss',
+  MEDIUM: 'bg-brass',
+  HIGH: 'bg-oxblood',
+}
+
 export interface Task {
   id: string
   projectId: string
   title: string
   description: string | null
   status: TaskStatus
+  priority: TaskPriority
   assigneeId: string | null
   createdBy: string
   createdAt: string

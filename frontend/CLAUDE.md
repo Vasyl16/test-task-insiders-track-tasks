@@ -25,9 +25,9 @@ Architecture is a pragmatic Feature-Sliced Design (`app / pages / widgets / feat
 ### Layer responsibilities
 - `app/`: application-wide composition — root `App.tsx`, `providers/` (`QueryProvider`, composed once near the root), `routes/` (router config, `ProtectedRoute`/`PublicRoute` guards), `layouts/` (shared page shells, e.g. the authenticated app shell). Nothing domain-specific lives here.
 - `pages/`: one folder per route area, composed from features/widgets/entities. Pages never call HTTP directly.
-- `widgets/`: composite UI blocks spanning multiple features/entities. `widgets/app-header` — the dashboard header (current user email + logout), extracted from `DashboardLayout` since it composes an entity (user) with a feature (auth).
+- `widgets/`: composite UI blocks spanning multiple features/entities. `widgets/app-header` — the dashboard header (current user email + logout), extracted from `DashboardLayout` since it composes an entity (user) with a feature (auth). `widgets/task-board` — the drag-and-drop Kanban board on `ProjectPage`, one column per task status.
 - `features/`: one folder per user-facing capability (auth, workspace, project, task, comment), each owning only its own components/hooks/schemas/types/utils. Created lazily. `features/auth` — `LoginForm`/`RegisterForm`. `features/workspace`/`features/project`/`features/task` — one `Create{Name}Form` + schema each (no update form yet — deferred; task status/assignee are updatable in the UI, but via an inline control on `ProjectPage`, not a form).
-- `entities/`: domain models shared across the app — `entities/user/model/user.ts`, `entities/workspace/model/{workspace.ts,workspace-member.ts}`, `entities/project/model/project.ts`, `entities/task/model/task.ts` (also exports `taskStatusValues`/`TASK_STATUS_LABELS`).
+- `entities/`: domain models shared across the app — `entities/user/model/user.ts`, `entities/workspace/model/{workspace.ts,workspace-member.ts}`, `entities/project/model/project.ts`, `entities/task/model/task.ts` (also exports `taskStatusValues`/`TASK_STATUS_LABELS` and `taskPriorityValues`/`TASK_PRIORITY_LABELS`/`TASK_PRIORITY_DOT_CLASSES`).
 - `shared/api/axios`: one configured Axios instance (`instance.ts`), request/response interceptors (`interceptors.ts`) that attach the access token and handle 401s by refreshing, and a token manager (`token-manager.ts`) that is the single place tokens are read from/written to.
 - `shared/api/queries`: one file per domain (auth, workspace, project, task). Plain functions that call the API through the shared Axios instance — no React or UI concerns, and no query/mutation split (a domain file holds both reads and writes, e.g. `getMe`, `login`, `register`, `logoutRequest`; `getWorkspaces`, `createWorkspace`, `getWorkspaceMembers`, ...).
 - `shared/api/services`: React Query hooks per domain (`useAuth`, `useLogin`, `useRegister`; `useWorkspaces`/`useWorkspace`/`useWorkspaceMembers`/`useCreateWorkspace`/`useUpdateWorkspace`/`useDeleteWorkspace`; `useProjects`/`useProject`/...; `useTasks`/`useTask`/`useCreateTask`/`useUpdateTask`/`useDeleteTask`) that wrap `queries` for use in components.
@@ -58,7 +58,9 @@ frontend/
 │   │   ├── workspace/
 │   │   └── project/
 │   ├── widgets/
-│   │   └── app-header/
+│   │   ├── app-header/
+│   │   │   └── ui/
+│   │   └── task-board/
 │   │       └── ui/
 │   ├── features/
 │   │   ├── auth/
@@ -148,4 +150,4 @@ Do not implement future milestones or unconfirmed library choices unless explici
 
 ## Current Milestone
 
-Current version: V4 Task Management UI. V1 Authentication, V2/V3 Workspace + Project UI, and V4 Task UI are all functionally complete — list/create/view/delete across workspaces/projects/tasks, nested routing (`/workspaces/:workspaceId`, `/workspaces/:workspaceId/projects/:projectId`), task status updates and assignment (picked from the workspace's members), client-side owner/creator gating on destructive actions (the backend is the real enforcement), and a full visual redesign ("The Ledger Desk" — see `architecture.md`). Not yet built: edit/rename UI for any of the three entities, and member invitation UI.
+Current version: V4 Task Management UI. V1 Authentication, V2/V3 Workspace + Project UI, and V4 Task UI are all functionally complete — list/create/view/delete across workspaces/projects/tasks, nested routing (`/workspaces/:workspaceId`, `/workspaces/:workspaceId/projects/:projectId`), a drag-and-drop Kanban board for tasks (native HTML5 DnD, no new dependency) with status columns and LOW/MEDIUM/HIGH priority indicators, assignment (picked from the workspace's members), client-side owner/creator gating on destructive actions (the backend is the real enforcement), and a full visual redesign ("The Ledger Desk" — see `architecture.md`). Not yet built: edit/rename UI for any of the three entities, and member invitation UI.

@@ -1,10 +1,11 @@
 import { api } from '../axios/instance'
-import type { Task, TaskStatus } from '../../../entities/task/model/task'
+import type { Task, TaskPriority, TaskStatus } from '../../../entities/task/model/task'
 
 export interface TaskPayload {
   title: string
   description?: string
   status?: TaskStatus
+  priority?: TaskPriority
   assigneeId?: string | null
 }
 
@@ -12,6 +13,7 @@ function toRequestBody(payload: Partial<TaskPayload>) {
   return {
     ...(payload.title !== undefined && { title: payload.title }),
     ...(payload.status !== undefined && { status: payload.status }),
+    ...(payload.priority !== undefined && { priority: payload.priority }),
     ...('assigneeId' in payload && { assigneeId: payload.assigneeId || null }),
     description: payload.description?.trim() ? payload.description.trim() : undefined,
   }
