@@ -5,11 +5,11 @@ Aligned with the backend's actual versioning (`backend/.claude/roadmap.md`), not
 
 - V1 Authentication UI (done)
 - V2/V3 Workspace + Project UI (done — create/list/view/delete, plus a full visual redesign; no edit/rename or member-invitation UI yet)
-- V4 Task Management UI (in progress)
+- V4 Task Management UI (done — create/list/view/delete, status updates, assignment)
 - V5 Advanced Features UI
 
 ## Current Milestone
-V4 Task Management UI
+V4 Task Management UI is functionally complete; picking the next milestone is open.
 
 ### V1 features (done)
 - Axios instance + interceptors + token manager, wired to the backend's JWT access/refresh flow
@@ -25,13 +25,15 @@ V4 Task Management UI
 - Client-side gating of destructive actions based on `ownerId`/`createdBy` (the backend remains the actual enforcement)
 - Full visual redesign ("The Ledger Desk" — see `architecture.md`): design tokens, a real `Modal` component, redesigned header/dashboard/workspace page
 
-### V4 features (in progress)
-- Backend is done (`../backend`): Task CRUD nested under `/workspaces/:workspaceId/projects/:projectId/tasks`, status enum, optional assignee
-- Frontend needs: a project detail page (`/workspaces/:workspaceId/projects/:projectId` — doesn't exist yet), task list/create/status/assignment UI, extending the ledger design system
+### V4 features (done)
+- Project detail page (`/workspaces/:workspaceId/projects/:projectId`, new) showing that project's tasks as numbered ledger rows
+- Create-task form (in a modal): title, description, status (defaults `TODO`), assignee (picked from the workspace's members)
+- Inline status change directly on each task row (any workspace member can do this, matching the backend's collaborative-update rule)
+- Delete a task (creator-or-owner, same pattern as Project)
 
 ### Explicitly deferred (not yet built)
-- Editing/renaming a workspace or project (API supports it; no UI yet)
-- Member invitation UI (backend supports it; deliberately deferred per instruction)
+- Editing/renaming a workspace, project, or task's title/description (status/assignee updates exist for tasks; full edit forms don't, for any of the three)
+- Member invitation UI (backend supports it, and `useWorkspaceMembers` now exists frontend-side from building the assignee dropdown — less new plumbing needed than before, but still not built)
 
 ## Future Versions
 ### V5 Advanced Features UI

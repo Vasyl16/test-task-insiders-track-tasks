@@ -3,6 +3,7 @@ import {
   createWorkspace,
   deleteWorkspace,
   getWorkspace,
+  getWorkspaceMembers,
   getWorkspaces,
   updateWorkspace,
   type WorkspacePayload,
@@ -20,6 +21,14 @@ export function useWorkspace(id: string) {
   return useQuery({
     queryKey: queryKeys.workspaces.detail(id),
     queryFn: () => getWorkspace(id),
+    enabled: Boolean(id),
+  })
+}
+
+export function useWorkspaceMembers(id: string) {
+  return useQuery({
+    queryKey: queryKeys.workspaces.members(id),
+    queryFn: () => getWorkspaceMembers(id),
     enabled: Boolean(id),
   })
 }

@@ -1,5 +1,6 @@
 import { api } from '../axios/instance'
 import type { Workspace } from '../../../entities/workspace/model/workspace'
+import type { WorkspaceMember } from '../../../entities/workspace/model/workspace-member'
 
 export interface WorkspacePayload {
   name: string
@@ -38,4 +39,9 @@ export async function updateWorkspace(
 
 export async function deleteWorkspace(id: string): Promise<void> {
   await api.delete(`/workspaces/${id}`)
+}
+
+export async function getWorkspaceMembers(id: string): Promise<WorkspaceMember[]> {
+  const response = await api.get<WorkspaceMember[]>(`/workspaces/${id}/members`)
+  return response.data
 }

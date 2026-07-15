@@ -113,8 +113,11 @@ export function WorkspacePage() {
                 <span className="font-mono text-sm text-ink/35 tabular-nums">
                   {String(index + 1).padStart(2, '0')}
                 </span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-display text-lg text-ink">
+                <Link
+                  to={`/workspaces/${workspaceId}/projects/${project.id}`}
+                  className="min-w-0 flex-1"
+                >
+                  <p className="truncate font-display text-lg text-ink hover:text-brass-deep">
                     {project.name}
                   </p>
                   {project.description && (
@@ -122,7 +125,7 @@ export function WorkspacePage() {
                       {project.description}
                     </p>
                   )}
-                </div>
+                </Link>
                 {canManage && (
                   <button
                     type="button"

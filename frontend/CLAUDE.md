@@ -26,15 +26,15 @@ Architecture is a pragmatic Feature-Sliced Design (`app / pages / widgets / feat
 - `app/`: application-wide composition — root `App.tsx`, `providers/` (`QueryProvider`, composed once near the root), `routes/` (router config, `ProtectedRoute`/`PublicRoute` guards), `layouts/` (shared page shells, e.g. the authenticated app shell). Nothing domain-specific lives here.
 - `pages/`: one folder per route area, composed from features/widgets/entities. Pages never call HTTP directly.
 - `widgets/`: composite UI blocks spanning multiple features/entities. `widgets/app-header` — the dashboard header (current user email + logout), extracted from `DashboardLayout` since it composes an entity (user) with a feature (auth).
-- `features/`: one folder per user-facing capability (auth, workspace, project, task, comment), each owning only its own components/hooks/schemas/types/utils. Created lazily. `features/auth` — `LoginForm`/`RegisterForm`. `features/workspace`/`features/project` — one `Create{Name}Form` + schema each (no update form yet — deferred).
-- `entities/`: domain models shared across the app — `entities/user/model/user.ts`, `entities/workspace/model/workspace.ts`, `entities/project/model/project.ts`.
+- `features/`: one folder per user-facing capability (auth, workspace, project, task, comment), each owning only its own components/hooks/schemas/types/utils. Created lazily. `features/auth` — `LoginForm`/`RegisterForm`. `features/workspace`/`features/project`/`features/task` — one `Create{Name}Form` + schema each (no update form yet — deferred; task status/assignee are updatable in the UI, but via an inline control on `ProjectPage`, not a form).
+- `entities/`: domain models shared across the app — `entities/user/model/user.ts`, `entities/workspace/model/{workspace.ts,workspace-member.ts}`, `entities/project/model/project.ts`, `entities/task/model/task.ts` (also exports `taskStatusValues`/`TASK_STATUS_LABELS`).
 - `shared/api/axios`: one configured Axios instance (`instance.ts`), request/response interceptors (`interceptors.ts`) that attach the access token and handle 401s by refreshing, and a token manager (`token-manager.ts`) that is the single place tokens are read from/written to.
-- `shared/api/queries`: one file per domain (auth, workspace, project). Plain functions that call the API through the shared Axios instance — no React or UI concerns, and no query/mutation split (a domain file holds both reads and writes, e.g. `getMe`, `login`, `register`, `logoutRequest`; `getWorkspaces`, `createWorkspace`, ...).
-- `shared/api/services`: React Query hooks per domain (`useAuth`, `useLogin`, `useRegister`; `useWorkspaces`/`useWorkspace`/`useCreateWorkspace`/`useUpdateWorkspace`/`useDeleteWorkspace`; `useProjects`/`useProject`/`useCreateProject`/`useUpdateProject`/`useDeleteProject`) that wrap `queries` for use in components.
+- `shared/api/queries`: one file per domain (auth, workspace, project, task). Plain functions that call the API through the shared Axios instance — no React or UI concerns, and no query/mutation split (a domain file holds both reads and writes, e.g. `getMe`, `login`, `register`, `logoutRequest`; `getWorkspaces`, `createWorkspace`, `getWorkspaceMembers`, ...).
+- `shared/api/services`: React Query hooks per domain (`useAuth`, `useLogin`, `useRegister`; `useWorkspaces`/`useWorkspace`/`useWorkspaceMembers`/`useCreateWorkspace`/`useUpdateWorkspace`/`useDeleteWorkspace`; `useProjects`/`useProject`/...; `useTasks`/`useTask`/`useCreateTask`/`useUpdateTask`/`useDeleteTask`) that wrap `queries` for use in components.
 - `shared/api/queryClient.ts`: the shared `QueryClient` instance.
 - `shared/api/queryKeys.ts`: centralized cache key factory shared by queries, so invalidation stays consistent.
 - `shared/lib`: generic, non-domain-specific helpers. First one: `getErrorMessage.ts` (extracts a backend error message from an Axios error).
-- `shared/ui`: presentation-only primitives with no domain logic — `Button` (`variant: 'primary' | 'ghost' | 'logout' | 'nav'`), `Input`, `FormError`, `Modal` (portal-rendered dialog, Escape/backdrop to close). Used by `features/auth`/`features/workspace`/`features/project`'s forms and `widgets/app-header`. See "Visual Design System" in `architecture.md` for the token system these are built on.
+- `shared/ui`: presentation-only primitives with no domain logic — `Button` (`variant: 'primary' | 'ghost' | 'logout' | 'nav'`), `Input`, `Select` (same labeled treatment as `Input`, for dropdowns), `FormError`, `Modal` (portal-rendered dialog, Escape/backdrop to close). Used by `features/auth`/`features/workspace`/`features/project`/`features/task`'s forms and `widgets/app-header`. See "Visual Design System" in `architecture.md` for the token system these are built on.
 - `shared/hooks`, `shared/utils`, `shared/constants`: generic reusable code not tied to a domain — no business logic. Created as content actually exists.
 - `store/` (not yet created): global client/UI-only state (theme, sidebar, modal visibility, etc.). **Never the authenticated user, `isAuthenticated`, or any other server-originated data** — that's server state and belongs in the query cache via `shared/api/services`, full stop, no exceptions. (This was tried once and reverted — see `progress.md`'s "Step 2 correction" entry for why.)
 
@@ -55,7 +55,8 @@ frontend/
 │   ├── pages/
 │   │   ├── auth/
 │   │   ├── dashboard/
-│   │   └── workspace/
+│   │   ├── workspace/
+│   │   └── project/
 │   ├── widgets/
 │   │   └── app-header/
 │   │       └── ui/
@@ -66,7 +67,10 @@ frontend/
 │   │   ├── workspace/
 │   │   │   ├── components/
 │   │   │   └── schemas/
-│   │   └── project/
+│   │   ├── project/
+│   │   │   ├── components/
+│   │   │   └── schemas/
+│   │   └── task/
 │   │       ├── components/
 │   │       └── schemas/
 │   ├── entities/
@@ -74,7 +78,9 @@ frontend/
 │   │   │   └── model/
 │   │   ├── workspace/
 │   │   │   └── model/
-│   │   └── project/
+│   │   ├── project/
+│   │   │   └── model/
+│   │   └── task/
 │   │       └── model/
 │   ├── shared/
 │   │   ├── api/
@@ -91,6 +97,7 @@ frontend/
 │   │   ├── ui/
 │   │   │   ├── Button.tsx
 │   │   │   ├── Input.tsx
+│   │   │   ├── Select.tsx
 │   │   │   ├── FormError.tsx
 │   │   │   └── Modal.tsx
 │   │   ├── hooks/
@@ -102,7 +109,7 @@ frontend/
 └── vite.config.ts
 ```
 
-Not every folder needs to exist before it has content — create a folder when the first file that belongs in it is added, not preemptively. `shared/ui`, `shared/hooks`, `shared/utils`, `shared/constants` are intentionally absent from the current tree; `widgets/`, `features/`, and `shared/lib` now each hold their first real content.
+Not every folder needs to exist before it has content — create a folder when the first file that belongs in it is added, not preemptively. `shared/hooks`, `shared/utils`, `shared/constants` are intentionally absent from the current tree.
 
 ## API Conventions
 - All requests go through the single configured Axios instance in `shared/api/axios/instance.ts`. No ad-hoc `fetch`/`axios` calls in components, pages, or features.
@@ -141,4 +148,4 @@ Do not implement future milestones or unconfirmed library choices unless explici
 
 ## Current Milestone
 
-Current version: V4 Task Management UI (in progress). V1 Authentication UI and V2/V3 Workspace + Project UI are complete and committed — list/create/view/delete for both, nested routing (`/workspaces/:workspaceId`), client-side owner/creator gating on destructive actions (the backend is the real enforcement), plus a full visual redesign ("The Ledger Desk" — see `architecture.md`). Not yet built: edit/rename UI, member invitation UI, and the Task UI itself (backend is done; needs a new project detail page since projects currently have no page of their own, only list rows).
+Current version: V4 Task Management UI. V1 Authentication, V2/V3 Workspace + Project UI, and V4 Task UI are all functionally complete — list/create/view/delete across workspaces/projects/tasks, nested routing (`/workspaces/:workspaceId`, `/workspaces/:workspaceId/projects/:projectId`), task status updates and assignment (picked from the workspace's members), client-side owner/creator gating on destructive actions (the backend is the real enforcement), and a full visual redesign ("The Ledger Desk" — see `architecture.md`). Not yet built: edit/rename UI for any of the three entities, and member invitation UI.
