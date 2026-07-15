@@ -91,10 +91,8 @@ Every backend task should follow this workflow:
 
 ## Current Milestone
 
-Current version: V1 Authentication.
+Current version: V3 Projects.
 
-This milestone includes backend work related to authentication, such as:
-- user registration and login flow,
-- password handling,
-- JWT issuance and validation,
-- and basic authentication-related API structure.
+- V1 Authentication: done — registration, login, JWT issuance/validation, refresh token rotation, logout, current-user endpoint.
+- V2 Workspaces: done — Workspace CRUD (create, list-mine, get-by-id, update, delete), `WorkspaceMember` with `OWNER`/`MEMBER` roles auto-created on workspace creation, and ownership/membership-based authorization (owner: full access; member: read-only; non-member: no access). Member invitation is explicitly deferred.
+- V3 Projects: done — Project CRUD nested under `/workspaces/:workspaceId/projects`. Authorization (not explicitly spec'd, a reasonable default applied): any workspace member can create/read; only the project's creator or the workspace owner can update/delete.
