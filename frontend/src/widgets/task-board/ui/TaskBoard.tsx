@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { DragEvent } from 'react'
+import { EditTaskForm } from '../../../features/task/components/EditTaskForm'
 import {
   TASK_PRIORITY_BORDER_CLASSES,
   TASK_PRIORITY_LABELS,
@@ -9,6 +10,7 @@ import {
 import type { Task, TaskStatus } from '../../../entities/task/model/task'
 import type { WorkspaceMember } from '../../../entities/workspace/model/workspace-member'
 import { useDeleteTask, useUpdateTask } from '../../../shared/api/services/useTasks'
+import { Modal } from '../../../shared/ui/Modal'
 
 interface TaskBoardProps {
   workspaceId: string
@@ -31,6 +33,7 @@ export function TaskBoard({
   const deleteTask = useDeleteTask(workspaceId, projectId)
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null)
   const [dragOverStatus, setDragOverStatus] = useState<TaskStatus | null>(null)
+  const [editingTask, setEditingTask] = useState<Task | null>(null)
 
   const memberEmailById = new Map(members?.map((member) => [member.user.id, member.user.email]))
 
@@ -119,27 +122,14 @@ export function TaskBoard({
                       {TASK_PRIORITY_LABELS[task.priority]} · {assigneeEmail ?? 'Unassigned'}
                     </p>
 
-                    <div className="flex items-center justify-between gap-2 pt-1">
-                      <label className="sr-only" htmlFor={`status-${task.id}`}>
-                        Status (accessible alternative to dragging)
-                      </label>
-                      <select
-                        id={`status-${task.id}`}
-                        value={task.status}
-                        onChange={(e) =>
-                          updateTask.mutate({
-                            id: task.id,
-                            status: e.target.value as TaskStatus,
-                          })
-                        }
-                        className="rounded-md border border-ink/15 bg-paper px-1.5 py-0.5 font-mono text-[11px] text-ink focus:border-brass focus:outline-none"
+                    <div className="flex items-center justify-end gap-3 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setEditingTask(task)}
+                        className="font-mono text-[11px] tracking-wide text-brass-deep uppercase transition-colors hover:text-brass"
                       >
-                        {taskStatusValues.map((s) => (
-                          <option key={s} value={s}>
-                            {TASK_STATUS_LABELS[s]}
-                          </option>
-                        ))}
-                      </select>
+                        Edit
+                      </button>
 
                       {canManage && (
                         <button
@@ -158,6 +148,18 @@ export function TaskBoard({
           </div>
         )
       })}
+
+      {editingTask && (
+        <Modal title="Edit task" onClose={() => setEditingTask(null)}>
+          <EditTaskForm
+            workspaceId={workspaceId}
+            projectId={projectId}
+            task={editingTask}
+            members={members}
+            onSaved={() => setEditingTask(null)}
+          />
+        </Modal>
+      )}
     </div>
   )
 }
