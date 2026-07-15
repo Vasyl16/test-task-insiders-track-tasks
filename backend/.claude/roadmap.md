@@ -4,11 +4,11 @@
 - V1 Authentication (done)
 - V2 Workspaces (done)
 - V3 Projects (done)
-- V4 Task Management
+- V4 Task Management (backend done, frontend in progress)
 - V5 Advanced Features
 
 ## Current Milestone
-V2 Workspaces (including member invitation) and V3 Projects both complete (schema + full CRUD APIs).
+V4 Task Management — backend complete (schema + full CRUD API); frontend Task UI in progress.
 
 ### V1 features (done)
 - User registration
@@ -27,12 +27,13 @@ V2 Workspaces (including member invitation) and V3 Projects both complete (schem
 - Project CRUD (create, list-for-workspace, get-by-id, update, delete), nested under `/workspaces/:workspaceId/projects`
 - Authorization (not explicitly spec'd, my default — flag if wrong): any workspace member can create/read; only the project's creator or the workspace owner can update/delete
 
-## Future Versions
-### V4 Task Management
-- Task CRUD operations
-- Task ownership and assignment
-- Basic task status flow
+### V4 features (backend done)
+- Task CRUD (create, list-for-project, get-by-id, update, delete), nested under `/workspaces/:workspaceId/projects/:projectId/tasks`
+- Status flow via `TaskStatus` enum (`TODO`/`IN_PROGRESS`/`DONE`), optional assignee (validated as a workspace member)
+- Authorization (not explicitly spec'd, my default — flag if wrong): any workspace member can create/read/update (collaborative editing); only the task's creator or the workspace owner can delete
+- Not yet built: frontend UI (project detail page, task list/board, create/assign forms)
 
+## Future Versions
 ### V5 Advanced Features
 - Notifications
 - Role-based access

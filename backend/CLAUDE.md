@@ -91,8 +91,9 @@ Every backend task should follow this workflow:
 
 ## Current Milestone
 
-Current version: V3 Projects.
+Current version: V4 Task Management (backend done, frontend in progress).
 
 - V1 Authentication: done — registration, login, JWT issuance/validation, refresh token rotation, logout, current-user endpoint.
-- V2 Workspaces: done — Workspace CRUD (create, list-mine, get-by-id, update, delete), `WorkspaceMember` with `OWNER`/`MEMBER` roles auto-created on workspace creation, and ownership/membership-based authorization (owner: full access; member: read-only; non-member: no access). Member invitation is explicitly deferred.
+- V2 Workspaces: done — Workspace CRUD (create, list-mine, get-by-id, update, delete), `WorkspaceMember` with `OWNER`/`MEMBER` roles auto-created on workspace creation, ownership/membership-based authorization, and member invitation (`POST`/`GET /workspaces/:id/members`).
 - V3 Projects: done — Project CRUD nested under `/workspaces/:workspaceId/projects`. Authorization (not explicitly spec'd, a reasonable default applied): any workspace member can create/read; only the project's creator or the workspace owner can update/delete.
+- V4 Tasks: backend done — Task CRUD nested under `/workspaces/:workspaceId/projects/:projectId/tasks`, with a `TaskStatus` enum (`TODO`/`IN_PROGRESS`/`DONE`) and optional assignee (validated as a workspace member). Authorization (not explicitly spec'd, a default applied): any workspace member can create/read/update; only the creator or workspace owner can delete. Frontend UI not yet built.
