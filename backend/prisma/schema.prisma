@@ -90,16 +90,23 @@ enum TaskStatus {
   DONE
 }
 
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
 model Task {
-  id          String     @id @default(uuid())
+  id          String       @id @default(uuid())
   projectId   String
   title       String
   description String?
-  status      TaskStatus @default(TODO)
+  status      TaskStatus   @default(TODO)
+  priority    TaskPriority @default(MEDIUM)
   assigneeId  String?
   createdBy   String
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 
   project  Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   creator  User    @relation("TaskCreator", fields: [createdBy], references: [id], onDelete: Restrict)

@@ -42,6 +42,7 @@ export class TasksService {
       title: dto.title,
       description: dto.description,
       status: dto.status,
+      priority: dto.priority,
       assigneeId: dto.assigneeId,
       createdBy: userId,
     });

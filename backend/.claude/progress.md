@@ -115,12 +115,19 @@
   - Verified end-to-end against the live DB with owner/member/outsider and a real workspace/project: 401/400/404/403 on every failure path (including assigning a non-member, and creating under a nonexistent project); default status is `TODO` on create; a member can update another's task's status (collaborative model confirmed) but an outsider cannot; unassignment via explicit `null` works; a member cannot delete a task they didn't create, but the creator/owner can. All 21 assertions passed. Test data cleaned up using a strict single-run tag (`zztest-tasks-<timestamp>-*`) rather than a blanket sweep — see Important Notes below for why that matters now.
   - Committed as `e87cb3b`.
 
+- **V4 follow-up — Task priority.** Prompted by a frontend request to show priority (green/yellow/red) on a new Kanban-style task board.
+  - `TaskPriority` enum: `LOW` | `MEDIUM` | `HIGH`, `Task.priority` defaults to `MEDIUM`. Migration `20260715125752_add_task_priority` — a plain additive column (`NOT NULL DEFAULT 'MEDIUM'`), so existing rows didn't need a backfill step.
+  - `CreateTaskDto`/`UpdateTaskDto` gained an optional `priority` field (`@IsEnum(TaskPriority)`); `TaskResponseDto` now returns it. `TasksService.create` explicitly lists `priority: dto.priority` alongside the other fields (the service builds the repository payload field-by-field rather than spreading the DTO, so this needed an explicit addition); `update` already forwarded `dto` as a whole, so no service change was needed there.
+  - Verified against the live DB: default `MEDIUM` on create when omitted, explicit `HIGH` accepted, an invalid value (`URGENT`) rejected with `400`, update to `LOW` persists, and list responses include the field. All 5 assertions passed.
+  - No frontend-only workaround needed here — the color mapping (green/yellow/red) is entirely a frontend concern; the backend just carries the enum value.
+  - Verified: `tsc --noEmit`, `npm run build` clean.
+  - Committed alongside the schema/migration as a single change (small enough not to split into separate commits like the larger V2–V4 milestones were).
+
 ## Current Task
-- V2 Workspaces, V3 Projects, and V4 Tasks all have complete, verified, committed CRUD APIs, each following the same Controller → Service → Repository → Prisma pattern. Frontend has caught up through Workspaces/Projects (with a full visual redesign) but not yet Tasks.
+- V2 Workspaces, V3 Projects, and V4 Tasks (including priority) all have complete, verified, committed CRUD APIs. Frontend has caught up through all of it, including a Kanban-style task board with drag-and-drop status changes and priority indicators.
 
 ## Next Steps
-- Frontend Task UI: a project detail page (doesn't exist yet — projects are currently only list rows on the workspace page) showing that project's tasks, task creation/status/assignment UI. In progress in the frontend session.
-- Still open from earlier: confirm/adjust the Project and Task permission models (both were my own defaults, not explicit specs) if they don't match what was intended. Member/task assignment UI (picking an assignee from the workspace's member list) will need the frontend to fetch `GET /workspaces/:id/members`, which has no frontend consumer yet either.
+- Awaiting explicit instruction. Open items from earlier: confirm/adjust the Project and Task permission models (both were my own defaults, not explicit specs) if they don't match what was intended; member invitation still has no frontend UI.
 
 ## Important Notes
 - Keep all future work scoped to the current milestone unless explicitly requested.

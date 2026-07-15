@@ -3,6 +3,7 @@ import { PrismaService } from '@prisma/prisma.service';
 import {
   Project,
   Task,
+  TaskPriority,
   TaskStatus,
   Workspace,
   WorkspaceMember,
@@ -34,6 +35,7 @@ export class TasksRepository {
     title: string;
     description?: string;
     status?: TaskStatus;
+    priority?: TaskPriority;
     assigneeId?: string;
     createdBy: string;
   }): Promise<Task> {
@@ -57,6 +59,7 @@ export class TasksRepository {
       title?: string;
       description?: string;
       status?: TaskStatus;
+      priority?: TaskPriority;
       assigneeId?: string | null;
     },
   ): Promise<Task> {

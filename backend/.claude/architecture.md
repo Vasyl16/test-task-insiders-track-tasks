@@ -55,7 +55,7 @@ Each feature module should include only the folders it needs, such as:
 
 ## Data Model
 - `User`, `RefreshToken` — V1 Authentication (see `backend/CLAUDE.md`).
-- `Workspace`, `WorkspaceMember` (role: `OWNER` | `MEMBER`), `Project`, `Task` (status: `TODO` | `IN_PROGRESS` | `DONE`) — V2/V3/V4 domain models. All have full APIs now.
+- `Workspace`, `WorkspaceMember` (role: `OWNER` | `MEMBER`), `Project`, `Task` (status: `TODO` | `IN_PROGRESS` | `DONE`; priority: `LOW` | `MEDIUM` | `HIGH`, defaults `MEDIUM`) — V2/V3/V4 domain models. All have full APIs now.
   - A `Workspace` has one `owner` (`User`) and many `members` (`WorkspaceMember`, unique per `(workspaceId, userId)`) and many `projects`.
   - A `Project` belongs to exactly one `Workspace` and has one `creator` (`User`, via `createdBy`), and many `tasks`.
   - A `Task` belongs to exactly one `Project`, has one `creator` (`createdBy`) and one optional `assignee` (`assigneeId`).
@@ -77,6 +77,7 @@ Each feature module should include only the folders it needs, such as:
 - Nested one level deeper than Project: `workspaces/:workspaceId/projects/:projectId/tasks`. Same controller → service → repository pattern, extended by one more existence check (`getWorkspaceOrThrow` → `getProjectOrThrow` → `getTaskOrThrow`, each 404 before the next layer's check).
 - Permission model (not explicitly spec'd — a reasonable default, flagged for review) is deliberately **more permissive than Project's**: any workspace member can create, read, *and update* a task (status changes, reassignment, edits) since a task board is meant to be worked on collaboratively day-to-day. Delete is still restricted to the task's creator or the workspace owner — the one destructive action stays gated even though routine editing doesn't.
 - Assigning a task validates the assignee is a workspace member (`400` if not) via the same `findWorkspaceMembership` check Workspace/Project already use. Unassignment is explicit (`assigneeId: null`), distinct from "don't change the assignee" (field omitted) — `class-validator`'s `@IsOptional()` treats both `null` and `undefined` as "skip validation," so both DTO states pass through correctly to a single optional-nullable field.
+- `priority` (`TaskPriority`, defaults `MEDIUM`) was added later, prompted by a frontend request for a Kanban board with priority indicators — same optional-enum-field pattern as `status`. A plain additive column with a default needed no backfill.
 
 ## Shared Infrastructure
 The backend now includes shared infrastructure for future growth:

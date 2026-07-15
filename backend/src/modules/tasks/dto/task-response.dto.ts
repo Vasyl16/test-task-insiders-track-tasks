@@ -1,4 +1,4 @@
-import { TaskStatus } from '@prisma/client';
+import { TaskPriority, TaskStatus } from '@prisma/client';
 
 export class TaskResponseDto {
   id: string;
@@ -6,6 +6,7 @@ export class TaskResponseDto {
   title: string;
   description: string | null;
   status: TaskStatus;
+  priority: TaskPriority;
   assigneeId: string | null;
   createdBy: string;
   createdAt: Date;
@@ -17,6 +18,7 @@ export class TaskResponseDto {
     title: string;
     description: string | null;
     status: TaskStatus;
+    priority: TaskPriority;
     assigneeId: string | null;
     createdBy: string;
     createdAt: Date;
@@ -27,6 +29,7 @@ export class TaskResponseDto {
     this.title = task.title;
     this.description = task.description;
     this.status = task.status;
+    this.priority = task.priority;
     this.assigneeId = task.assigneeId;
     this.createdBy = task.createdBy;
     this.createdAt = task.createdAt;
