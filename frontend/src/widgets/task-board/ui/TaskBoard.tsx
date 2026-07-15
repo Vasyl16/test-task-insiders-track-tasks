@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import type { DragEvent } from 'react'
-import { EditTaskForm } from '../../../features/task/components/EditTaskForm'
 import {
   TASK_PRIORITY_BORDER_CLASSES,
   TASK_PRIORITY_LABELS,
@@ -10,7 +9,6 @@ import {
 import type { Task, TaskStatus } from '../../../entities/task/model/task'
 import type { WorkspaceMember } from '../../../entities/workspace/model/workspace-member'
 import { useDeleteTask, useUpdateTask } from '../../../shared/api/services/useTasks'
-import { Modal } from '../../../shared/ui/Modal'
 
 interface TaskBoardProps {
   workspaceId: string
@@ -33,7 +31,6 @@ export function TaskBoard({
   const deleteTask = useDeleteTask(workspaceId, projectId)
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null)
   const [dragOverStatus, setDragOverStatus] = useState<TaskStatus | null>(null)
-  const [editingTask, setEditingTask] = useState<Task | null>(null)
 
   const memberEmailById = new Map(members?.map((member) => [member.user.id, member.user.email]))
 
@@ -144,25 +141,15 @@ export function TaskBoard({
                         ))}
                       </select>
 
-                      <div className="flex items-center gap-3">
+                      {canManage && (
                         <button
                           type="button"
-                          onClick={() => setEditingTask(task)}
-                          className="font-mono text-[11px] tracking-wide text-brass-deep uppercase transition-colors hover:text-brass"
+                          onClick={() => void deleteTask.mutateAsync(task.id)}
+                          className="font-mono text-[11px] tracking-wide text-oxblood/70 uppercase transition-colors hover:text-oxblood"
                         >
-                          Edit
+                          Remove
                         </button>
-
-                        {canManage && (
-                          <button
-                            type="button"
-                            onClick={() => void deleteTask.mutateAsync(task.id)}
-                            className="font-mono text-[11px] tracking-wide text-oxblood/70 uppercase transition-colors hover:text-oxblood"
-                          >
-                            Remove
-                          </button>
-                        )}
-                      </div>
+                      )}
                     </div>
                   </div>
                 )
@@ -171,18 +158,6 @@ export function TaskBoard({
           </div>
         )
       })}
-
-      {editingTask && (
-        <Modal title="Edit task" onClose={() => setEditingTask(null)}>
-          <EditTaskForm
-            workspaceId={workspaceId}
-            projectId={projectId}
-            task={editingTask}
-            members={members}
-            onSaved={() => setEditingTask(null)}
-          />
-        </Modal>
-      )}
     </div>
   )
 }
