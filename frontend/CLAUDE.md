@@ -25,16 +25,16 @@ Architecture is a pragmatic Feature-Sliced Design (`app / pages / widgets / feat
 ### Layer responsibilities
 - `app/`: application-wide composition — root `App.tsx`, `providers/` (`QueryProvider`, composed once near the root), `routes/` (router config, `ProtectedRoute`/`PublicRoute` guards), `layouts/` (shared page shells, e.g. the authenticated app shell). Nothing domain-specific lives here.
 - `pages/`: one folder per route area, composed from features/widgets/entities. Pages never call HTTP directly.
-- `widgets/`: composite UI blocks spanning multiple features/entities. First one: `widgets/app-header` — the dashboard header (current user email + logout), extracted from `DashboardLayout` since it composes an entity (user) with a feature (auth).
-- `features/`: one folder per user-facing capability (auth, workspace, project, task, comment), each owning only its own components/hooks/schemas/types/utils. Created lazily. First one: `features/auth` — `LoginForm`/`RegisterForm` (React Hook Form + Zod) plus their schemas.
-- `entities/`: domain models shared across the app (e.g. `entities/user/model/user.ts`). One folder per backend domain as each becomes real.
+- `widgets/`: composite UI blocks spanning multiple features/entities. `widgets/app-header` — the dashboard header (current user email + logout), extracted from `DashboardLayout` since it composes an entity (user) with a feature (auth).
+- `features/`: one folder per user-facing capability (auth, workspace, project, task, comment), each owning only its own components/hooks/schemas/types/utils. Created lazily. `features/auth` — `LoginForm`/`RegisterForm`. `features/workspace`/`features/project` — one `Create{Name}Form` + schema each (no update form yet — deferred).
+- `entities/`: domain models shared across the app — `entities/user/model/user.ts`, `entities/workspace/model/workspace.ts`, `entities/project/model/project.ts`.
 - `shared/api/axios`: one configured Axios instance (`instance.ts`), request/response interceptors (`interceptors.ts`) that attach the access token and handle 401s by refreshing, and a token manager (`token-manager.ts`) that is the single place tokens are read from/written to.
-- `shared/api/queries`: one file per domain (auth, workspace, project, task, comment). Plain functions that call the API through the shared Axios instance — no React or UI concerns, and no query/mutation split (a domain file holds both reads and writes, e.g. `getMe`, `login`, `register`, `logoutRequest`).
-- `shared/api/services`: React Query hooks per domain (`useAuth`, `useLogin`, `useRegister`, `useWorkspace`, ...) that wrap `queries` for use in components.
+- `shared/api/queries`: one file per domain (auth, workspace, project). Plain functions that call the API through the shared Axios instance — no React or UI concerns, and no query/mutation split (a domain file holds both reads and writes, e.g. `getMe`, `login`, `register`, `logoutRequest`; `getWorkspaces`, `createWorkspace`, ...).
+- `shared/api/services`: React Query hooks per domain (`useAuth`, `useLogin`, `useRegister`; `useWorkspaces`/`useWorkspace`/`useCreateWorkspace`/`useUpdateWorkspace`/`useDeleteWorkspace`; `useProjects`/`useProject`/`useCreateProject`/`useUpdateProject`/`useDeleteProject`) that wrap `queries` for use in components.
 - `shared/api/queryClient.ts`: the shared `QueryClient` instance.
 - `shared/api/queryKeys.ts`: centralized cache key factory shared by queries, so invalidation stays consistent.
 - `shared/lib`: generic, non-domain-specific helpers. First one: `getErrorMessage.ts` (extracts a backend error message from an Axios error).
-- `shared/ui`: presentation-only primitives with no domain logic — `Button`, `Input`, `FormError`. Used by `features/auth`'s forms and `widgets/app-header` so far.
+- `shared/ui`: presentation-only primitives with no domain logic — `Button` (`variant: 'primary' | 'ghost' | 'logout'`), `Input`, `FormError`. Used by `features/auth`/`features/workspace`/`features/project`'s forms and `widgets/app-header`.
 - `shared/hooks`, `shared/utils`, `shared/constants`: generic reusable code not tied to a domain — no business logic. Created as content actually exists.
 - `store/` (not yet created): global client/UI-only state (theme, sidebar, modal visibility, etc.). **Never the authenticated user, `isAuthenticated`, or any other server-originated data** — that's server state and belongs in the query cache via `shared/api/services`, full stop, no exceptions. (This was tried once and reverted — see `progress.md`'s "Step 2 correction" entry for why.)
 
@@ -54,16 +54,27 @@ frontend/
 │   │   └── App.tsx
 │   ├── pages/
 │   │   ├── auth/
-│   │   └── dashboard/
+│   │   ├── dashboard/
+│   │   └── workspace/
 │   ├── widgets/
 │   │   └── app-header/
 │   │       └── ui/
 │   ├── features/
-│   │   └── auth/
+│   │   ├── auth/
+│   │   │   ├── components/
+│   │   │   └── schemas/
+│   │   ├── workspace/
+│   │   │   ├── components/
+│   │   │   └── schemas/
+│   │   └── project/
 │   │       ├── components/
 │   │       └── schemas/
 │   ├── entities/
-│   │   └── user/
+│   │   ├── user/
+│   │   │   └── model/
+│   │   ├── workspace/
+│   │   │   └── model/
+│   │   └── project/
 │   │       └── model/
 │   ├── shared/
 │   │   ├── api/
@@ -97,6 +108,7 @@ Not every folder needs to exist before it has content — create a folder when t
 - Server state (anything that comes from the API) is owned by `shared/api/queries` and consumed via `shared/api/services` hooks — never duplicated into `store/`. This includes the authenticated user: `useAuth()` (`shared/api/services/useAuth.ts`) wraps a `["auth","me"]` query; `isAuthenticated` is derived as `Boolean(user)`, never stored separately.
 - The access token is attached automatically by a request interceptor. A response interceptor handles `401`s by attempting one refresh (`POST /auth/refresh`) and retrying the original request; if the refresh itself fails, clear tokens and redirect to login.
 - When a mutation needs to update auth state immediately (login, register, logout), write the result straight into the cache with `queryClient.setQueryData(queryKeys.auth.me, ...)`. Don't use `removeQueries`/`invalidateQueries` for this — confirmed by testing in a real browser that `removeQueries` does not reliably re-render already-mounted `useQuery` observers on this stack (`@tanstack/react-query` 5.x + React 19), while `setQueryData` does.
+- For list/detail resources (workspaces, projects), plain `invalidateQueries` on mutation success is fine — but for **delete** mutations specifically, pass `exact: true` and explicitly `removeQueries` the deleted item's own detail key. `invalidateQueries` fuzzy-matches by key prefix by default, so a non-`exact` invalidation of a list key also refetches that same item's still-mounted detail query — which 404s if the user is deleting the very resource they're currently viewing. Confirmed via a real browser: the page that's about to navigate away should also navigate *before* firing the delete mutation (`mutate`, not awaited `mutateAsync`), not after — otherwise the mutation's cache cleanup runs while the page (and its queries) are still mounted.
 
 ## Security Rules
 - Centralize token storage in `token-manager.ts` so the storage mechanism (memory vs `localStorage` vs elsewhere) can change in one place.
@@ -128,4 +140,4 @@ Do not implement future milestones or unconfirmed library choices unless explici
 
 ## Current Milestone
 
-Current version: V1 Authentication UI — login/register forms, token handling, protected routing, and a current-user view, wired to the backend's V1 Authentication API. Functionally complete and verified against the live backend; not yet committed.
+Current version: Workspace + Project UI (matching the backend's V2/V3). V1 Authentication UI (login/register, token handling, protected routing, current-user view) is complete. Workspace/Project UI adds: list/create/view/delete for both, nested routing (`/workspaces/:workspaceId`), client-side owner/creator gating on destructive actions (the backend is the real enforcement). Not yet built: edit/rename UI for either, and member invitation UI. Functionally complete and verified against the live backend; not yet committed.

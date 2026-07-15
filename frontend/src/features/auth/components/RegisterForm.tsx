@@ -60,7 +60,7 @@ export function RegisterForm() {
 
       <FormError message={errors.root?.message} />
 
-      <Button type="submit" disabled={isSubmitting}>
+      <Button type="submit" disabled={isSubmitting} className="w-full">
         {isSubmitting ? 'Creating account…' : 'Register'}
       </Button>
 

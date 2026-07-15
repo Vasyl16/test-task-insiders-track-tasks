@@ -51,7 +51,7 @@ export function LoginForm() {
 
       <FormError message={errors.root?.message} />
 
-      <Button type="submit" disabled={isSubmitting}>
+      <Button type="submit" disabled={isSubmitting} className="w-full">
         {isSubmitting ? 'Logging in…' : 'Log in'}
       </Button>
 
