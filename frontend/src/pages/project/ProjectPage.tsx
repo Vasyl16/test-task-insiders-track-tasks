@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
+import { EditProjectForm } from '../../features/project/components/EditProjectForm'
 import { CreateTaskForm } from '../../features/task/components/CreateTaskForm'
 import { TaskBoard } from '../../widgets/task-board/ui/TaskBoard'
 import { useAuth } from '../../shared/api/services/useAuth'
@@ -25,13 +26,17 @@ export function ProjectPage() {
   const deleteProject = useDeleteProject(workspaceId)
 
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false)
+  const [isEditProjectOpen, setIsEditProjectOpen] = useState(false)
 
   const BackLink = (
     <Link
       to={`/workspaces/${workspaceId}`}
       className="inline-flex items-center gap-1.5 font-mono text-xs tracking-wide text-fog uppercase transition-colors hover:text-brass-light"
     >
-      ← Back to {workspace?.name ?? 'workspace'}
+      <span aria-hidden="true" className="-translate-y-px">
+        ←
+      </span>
+      <span>Back to {workspace?.name ?? 'workspace'}</span>
     </Link>
   )
 
@@ -79,9 +84,14 @@ export function ProjectPage() {
           )}
         </div>
         {canManageProject && (
-          <Button variant="logout" onClick={handleDeleteProject} className="shrink-0">
-            Delete project
-          </Button>
+          <div className="flex shrink-0 items-center gap-3">
+            <Button variant="nav" onClick={() => setIsEditProjectOpen(true)}>
+              Edit project
+            </Button>
+            <Button variant="logout" onClick={handleDeleteProject}>
+              Delete project
+            </Button>
+          </div>
         )}
       </div>
 
@@ -118,6 +128,16 @@ export function ProjectPage() {
             workspaceId={workspaceId}
             projectId={projectId}
             onCreated={() => setIsCreateTaskOpen(false)}
+          />
+        </Modal>
+      )}
+
+      {isEditProjectOpen && (
+        <Modal title="Edit project" onClose={() => setIsEditProjectOpen(false)}>
+          <EditProjectForm
+            workspaceId={workspaceId}
+            project={project}
+            onSaved={() => setIsEditProjectOpen(false)}
           />
         </Modal>
       )}

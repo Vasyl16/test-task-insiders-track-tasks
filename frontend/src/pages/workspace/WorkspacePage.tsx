@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
+import type { Project } from '../../entities/project/model/project'
 import { CreateProjectForm } from '../../features/project/components/CreateProjectForm'
+import { EditProjectForm } from '../../features/project/components/EditProjectForm'
+import { EditWorkspaceForm } from '../../features/workspace/components/EditWorkspaceForm'
 import { useAuth } from '../../shared/api/services/useAuth'
 import { useDeleteProject, useProjects } from '../../shared/api/services/useProjects'
 import { useDeleteWorkspace, useWorkspace } from '../../shared/api/services/useWorkspaces'
@@ -22,13 +25,18 @@ export function WorkspacePage() {
   const loggedProjects = projects ? [...projects].reverse() : undefined
 
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false)
+  const [isEditWorkspaceOpen, setIsEditWorkspaceOpen] = useState(false)
+  const [editingProject, setEditingProject] = useState<Project | null>(null)
 
   const BackLink = (
     <Link
       to="/dashboard"
       className="inline-flex items-center gap-1.5 font-mono text-xs tracking-wide text-fog uppercase transition-colors hover:text-brass-light"
     >
-      ← All workspaces
+      <span aria-hidden="true" className="-translate-y-px">
+        ←
+      </span>
+      <span>All workspaces</span>
     </Link>
   )
 
@@ -80,9 +88,14 @@ export function WorkspacePage() {
           )}
         </div>
         {isOwner && (
-          <Button variant="logout" onClick={handleDeleteWorkspace} className="shrink-0">
-            Delete workspace
-          </Button>
+          <div className="flex shrink-0 items-center gap-3">
+            <Button variant="nav" onClick={() => setIsEditWorkspaceOpen(true)}>
+              Edit workspace
+            </Button>
+            <Button variant="logout" onClick={handleDeleteWorkspace}>
+              Delete workspace
+            </Button>
+          </div>
         )}
       </div>
 
@@ -127,13 +140,22 @@ export function WorkspacePage() {
                   )}
                 </Link>
                 {canManage && (
-                  <button
-                    type="button"
-                    onClick={() => void deleteProject.mutateAsync(project.id)}
-                    className="shrink-0 font-mono text-xs tracking-wide text-oxblood/70 uppercase transition-colors hover:text-oxblood"
-                  >
-                    Remove
-                  </button>
+                  <div className="flex shrink-0 items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setEditingProject(project)}
+                      className="font-mono text-xs tracking-wide text-brass-deep uppercase transition-colors hover:text-brass"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void deleteProject.mutateAsync(project.id)}
+                      className="font-mono text-xs tracking-wide text-oxblood/70 uppercase transition-colors hover:text-oxblood"
+                    >
+                      Remove
+                    </button>
+                  </div>
                 )}
               </li>
             )
@@ -146,6 +168,25 @@ export function WorkspacePage() {
           <CreateProjectForm
             workspaceId={workspace.id}
             onCreated={() => setIsCreateProjectOpen(false)}
+          />
+        </Modal>
+      )}
+
+      {isEditWorkspaceOpen && (
+        <Modal title="Edit workspace" onClose={() => setIsEditWorkspaceOpen(false)}>
+          <EditWorkspaceForm
+            workspace={workspace}
+            onSaved={() => setIsEditWorkspaceOpen(false)}
+          />
+        </Modal>
+      )}
+
+      {editingProject && (
+        <Modal title="Edit project" onClose={() => setEditingProject(null)}>
+          <EditProjectForm
+            workspaceId={workspaceId}
+            project={editingProject}
+            onSaved={() => setEditingProject(null)}
           />
         </Modal>
       )}

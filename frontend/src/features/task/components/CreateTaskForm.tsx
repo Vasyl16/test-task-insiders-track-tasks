@@ -23,6 +23,8 @@ const priorityOptions = taskPriorityValues.map((priority) => ({
   dotClassName: TASK_PRIORITY_DOT_CLASSES[priority],
 }))
 
+const UNASSIGNED_OPTION = { value: '', label: 'Unassigned' }
+
 interface CreateTaskFormProps {
   workspaceId: string
   projectId: string
@@ -32,6 +34,10 @@ interface CreateTaskFormProps {
 export function CreateTaskForm({ workspaceId, projectId, onCreated }: CreateTaskFormProps) {
   const createTask = useCreateTask(workspaceId, projectId)
   const { data: members } = useWorkspaceMembers(workspaceId)
+  const assigneeOptions = [
+    UNASSIGNED_OPTION,
+    ...(members?.map((member) => ({ value: member.user.id, label: member.user.email })) ?? []),
+  ]
   const {
     register,
     control,
@@ -108,19 +114,20 @@ export function CreateTaskForm({ workspaceId, projectId, onCreated }: CreateTask
         )}
       />
 
-      <Select
-        id="task-assignee"
-        label="Assignee (optional)"
-        error={errors.assigneeId?.message}
-        {...register('assigneeId')}
-      >
-        <option value="">Unassigned</option>
-        {members?.map((member) => (
-          <option key={member.user.id} value={member.user.id}>
-            {member.user.email}
-          </option>
-        ))}
-      </Select>
+      <Controller
+        name="assigneeId"
+        control={control}
+        render={({ field }) => (
+          <Listbox
+            id="task-assignee"
+            label="Assignee (optional)"
+            value={field.value ?? ''}
+            onChange={field.onChange}
+            options={assigneeOptions}
+            error={errors.assigneeId?.message}
+          />
+        )}
+      />
 
       <FormError message={errors.root?.message} />
 

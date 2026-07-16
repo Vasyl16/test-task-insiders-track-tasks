@@ -24,6 +24,8 @@ const priorityOptions = taskPriorityValues.map((priority) => ({
   dotClassName: TASK_PRIORITY_DOT_CLASSES[priority],
 }))
 
+const UNASSIGNED_OPTION = { value: '', label: 'Unassigned' }
+
 interface EditTaskFormProps {
   workspaceId: string
   projectId: string
@@ -40,11 +42,15 @@ export function EditTaskForm({
   onSaved,
 }: EditTaskFormProps) {
   const updateTask = useUpdateTask(workspaceId, projectId)
+  const assigneeOptions = [
+    UNASSIGNED_OPTION,
+    ...(members?.map((member) => ({ value: member.user.id, label: member.user.email })) ?? []),
+  ]
   const {
     register,
     control,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, isDirty },
     setError,
   } = useForm<TaskFormValues>({
     resolver: zodResolver(taskSchema),
@@ -126,23 +132,24 @@ export function EditTaskForm({
         )}
       />
 
-      <Select
-        id="edit-task-assignee"
-        label="Assignee (optional)"
-        error={errors.assigneeId?.message}
-        {...register('assigneeId')}
-      >
-        <option value="">Unassigned</option>
-        {members?.map((member) => (
-          <option key={member.user.id} value={member.user.id}>
-            {member.user.email}
-          </option>
-        ))}
-      </Select>
+      <Controller
+        name="assigneeId"
+        control={control}
+        render={({ field }) => (
+          <Listbox
+            id="edit-task-assignee"
+            label="Assignee (optional)"
+            value={field.value ?? ''}
+            onChange={field.onChange}
+            options={assigneeOptions}
+            error={errors.assigneeId?.message}
+          />
+        )}
+      />
 
       <FormError message={errors.root?.message} />
 
-      <Button type="submit" disabled={isSubmitting} className="w-full">
+      <Button type="submit" disabled={isSubmitting || !isDirty} className="w-full">
         {isSubmitting ? 'Saving…' : 'Save changes'}
       </Button>
     </form>
