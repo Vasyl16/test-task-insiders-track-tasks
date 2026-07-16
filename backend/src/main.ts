@@ -3,7 +3,6 @@ import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { AppConfig } from '@config/config.types';
 import { AppModule } from './app.module';
-import { AllExceptionsFilter } from './common/filters';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -18,7 +17,6 @@ async function bootstrap() {
       transform: true,
     }),
   );
-  app.useGlobalFilters(new AllExceptionsFilter());
 
   await app.listen(configService.get('port', { infer: true }));
 }
