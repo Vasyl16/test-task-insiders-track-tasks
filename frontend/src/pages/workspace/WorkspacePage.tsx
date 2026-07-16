@@ -20,10 +20,6 @@ export function WorkspacePage() {
   const deleteWorkspace = useDeleteWorkspace()
   const deleteProject = useDeleteProject(workspaceId)
 
-  // The API returns newest-first; the ledger numbers a project by the order
-  // it was actually logged, so entry 01 must be the oldest, not the latest.
-  const loggedProjects = projects ? [...projects].reverse() : undefined
-
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false)
   const [isEditWorkspaceOpen, setIsEditWorkspaceOpen] = useState(false)
   const [editingProject, setEditingProject] = useState<Project | null>(null)
@@ -117,9 +113,9 @@ export function WorkspacePage() {
         </div>
       )}
 
-      {loggedProjects && loggedProjects.length > 0 && (
+      {projects && projects.length > 0 && (
         <ul className="mt-4 divide-y divide-brass/15 rounded-2xl bg-paper shadow-lg shadow-black/20">
-          {loggedProjects.map((project, index) => {
+          {projects.map((project, index) => {
             const canManage = isOwner || project.createdBy === user?.id
             return (
               <li key={project.id} className="flex items-center gap-4 px-6 py-4">
