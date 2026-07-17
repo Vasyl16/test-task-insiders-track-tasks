@@ -8,7 +8,7 @@ import {
 } from '@prisma/client';
 
 type WorkspaceMemberWithUser = WorkspaceMember & {
-  user: Pick<User, 'id' | 'email'>;
+  user: Pick<User, 'id' | 'email' | 'name'>;
 };
 
 @Injectable()
@@ -83,7 +83,7 @@ export class WorkspacesRepository {
   ): Promise<WorkspaceMemberWithUser> {
     return this.prisma.workspaceMember.create({
       data: { workspaceId, userId, role },
-      include: { user: { select: { id: true, email: true } } },
+      include: { user: { select: { id: true, email: true, name: true } } },
     });
   }
 
@@ -92,7 +92,7 @@ export class WorkspacesRepository {
   ): Promise<WorkspaceMemberWithUser[]> {
     return this.prisma.workspaceMember.findMany({
       where: { workspaceId },
-      include: { user: { select: { id: true, email: true } } },
+      include: { user: { select: { id: true, email: true, name: true } } },
       orderBy: { createdAt: 'asc' },
     });
   }

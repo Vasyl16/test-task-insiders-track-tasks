@@ -8,6 +8,7 @@ export class WorkspaceMemberResponseDto {
   user: {
     id: string;
     email: string;
+    name: string;
   };
 
   constructor(member: {
@@ -15,12 +16,16 @@ export class WorkspaceMemberResponseDto {
     workspaceId: string;
     role: WorkspaceRole;
     createdAt: Date;
-    user: { id: string; email: string };
+    user: { id: string; email: string; name: string };
   }) {
     this.id = member.id;
     this.workspaceId = member.workspaceId;
     this.role = member.role;
     this.createdAt = member.createdAt;
-    this.user = { id: member.user.id, email: member.user.email };
+    this.user = {
+      id: member.user.id,
+      email: member.user.email,
+      name: member.user.name,
+    };
   }
 }

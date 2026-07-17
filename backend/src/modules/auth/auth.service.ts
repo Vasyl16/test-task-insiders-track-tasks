@@ -40,6 +40,7 @@ export class AuthService {
     const user = await this.authRepository.createUser({
       email: dto.email,
       password: hashedPassword,
+      name: dto.name,
     });
 
     const tokens = await this.issueTokens(user);

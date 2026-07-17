@@ -9,6 +9,7 @@ export class TaskHistoryResponseDto {
   changedBy: {
     id: string;
     email: string;
+    name: string;
   };
 
   constructor(entry: {
@@ -17,13 +18,17 @@ export class TaskHistoryResponseDto {
     oldStatus: TaskStatus;
     newStatus: TaskStatus;
     changedAt: Date;
-    changer: { id: string; email: string };
+    changer: { id: string; email: string; name: string };
   }) {
     this.id = entry.id;
     this.taskId = entry.taskId;
     this.oldStatus = entry.oldStatus;
     this.newStatus = entry.newStatus;
     this.changedAt = entry.changedAt;
-    this.changedBy = { id: entry.changer.id, email: entry.changer.email };
+    this.changedBy = {
+      id: entry.changer.id,
+      email: entry.changer.email,
+      name: entry.changer.name,
+    };
   }
 }

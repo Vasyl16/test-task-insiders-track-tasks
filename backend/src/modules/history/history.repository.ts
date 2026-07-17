@@ -10,7 +10,7 @@ import {
 } from '@prisma/client';
 
 type TaskHistoryWithChanger = TaskHistory & {
-  changer: Pick<User, 'id' | 'email'>;
+  changer: Pick<User, 'id' | 'email' | 'name'>;
 };
 
 @Injectable()
@@ -41,7 +41,7 @@ export class HistoryRepository {
   findManyForTask(taskId: string): Promise<TaskHistoryWithChanger[]> {
     return this.prisma.taskHistory.findMany({
       where: { taskId },
-      include: { changer: { select: { id: true, email: true } } },
+      include: { changer: { select: { id: true, email: true, name: true } } },
       orderBy: { changedAt: 'desc' },
     });
   }

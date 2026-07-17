@@ -7,6 +7,7 @@ export class CommentResponseDto {
   author: {
     id: string;
     email: string;
+    name: string;
   };
 
   constructor(comment: {
@@ -15,13 +16,17 @@ export class CommentResponseDto {
     content: string;
     createdAt: Date;
     updatedAt: Date;
-    author: { id: string; email: string };
+    author: { id: string; email: string; name: string };
   }) {
     this.id = comment.id;
     this.taskId = comment.taskId;
     this.content = comment.content;
     this.createdAt = comment.createdAt;
     this.updatedAt = comment.updatedAt;
-    this.author = { id: comment.author.id, email: comment.author.email };
+    this.author = {
+      id: comment.author.id,
+      email: comment.author.email,
+      name: comment.author.name,
+    };
   }
 }

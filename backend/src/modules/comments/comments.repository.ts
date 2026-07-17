@@ -9,7 +9,9 @@ import {
   WorkspaceMember,
 } from '@prisma/client';
 
-type CommentWithAuthor = Comment & { author: Pick<User, 'id' | 'email'> };
+type CommentWithAuthor = Comment & {
+  author: Pick<User, 'id' | 'email' | 'name'>;
+};
 
 @Injectable()
 export class CommentsRepository {
@@ -43,7 +45,7 @@ export class CommentsRepository {
   }): Promise<CommentWithAuthor> {
     return this.prisma.comment.create({
       data,
-      include: { author: { select: { id: true, email: true } } },
+      include: { author: { select: { id: true, email: true, name: true } } },
     });
   }
 
@@ -54,7 +56,7 @@ export class CommentsRepository {
   findManyForTask(taskId: string): Promise<CommentWithAuthor[]> {
     return this.prisma.comment.findMany({
       where: { taskId },
-      include: { author: { select: { id: true, email: true } } },
+      include: { author: { select: { id: true, email: true, name: true } } },
       orderBy: { createdAt: 'asc' },
     });
   }
@@ -63,7 +65,7 @@ export class CommentsRepository {
     return this.prisma.comment.update({
       where: { id },
       data,
-      include: { author: { select: { id: true, email: true } } },
+      include: { author: { select: { id: true, email: true, name: true } } },
     });
   }
 
