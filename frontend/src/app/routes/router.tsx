@@ -28,9 +28,10 @@ export const router = createBrowserRouter([
       {
         element: <DashboardLayout />,
         children: [
-          { path: '/dashboard', element: <DashboardPage /> },
-          { path: '/workspaces/:workspaceId', element: <WorkspacePage /> },
+          { id: 'dashboard', path: '/dashboard', element: <DashboardPage /> },
+          { id: 'workspace', path: '/workspaces/:workspaceId', element: <WorkspacePage /> },
           {
+            id: 'project',
             path: '/workspaces/:workspaceId/projects/:projectId',
             element: <ProjectPage />,
           },

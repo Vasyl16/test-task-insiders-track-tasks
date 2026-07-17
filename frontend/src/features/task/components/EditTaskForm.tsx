@@ -15,13 +15,17 @@ import { Button } from '../../../shared/ui/Button'
 import { FormError } from '../../../shared/ui/FormError'
 import { Input } from '../../../shared/ui/Input'
 import { Listbox } from '../../../shared/ui/Listbox'
-import { Select } from '../../../shared/ui/Select'
 import { taskSchema, type TaskFormValues } from '../schemas/taskSchema'
 
 const priorityOptions = taskPriorityValues.map((priority) => ({
   value: priority,
   label: TASK_PRIORITY_LABELS[priority],
   dotClassName: TASK_PRIORITY_DOT_CLASSES[priority],
+}))
+
+const statusOptions = taskStatusValues.map((status) => ({
+  value: status,
+  label: TASK_STATUS_LABELS[status],
 }))
 
 const UNASSIGNED_OPTION = { value: '', label: 'Unassigned' }
@@ -104,18 +108,20 @@ export function EditTaskForm({
         {...register('description')}
       />
 
-      <Select
-        id="edit-task-status"
-        label="Status"
-        error={errors.status?.message}
-        {...register('status')}
-      >
-        {taskStatusValues.map((status) => (
-          <option key={status} value={status}>
-            {TASK_STATUS_LABELS[status]}
-          </option>
-        ))}
-      </Select>
+      <Controller
+        name="status"
+        control={control}
+        render={({ field }) => (
+          <Listbox
+            id="edit-task-status"
+            label="Status"
+            value={field.value}
+            onChange={field.onChange}
+            options={statusOptions}
+            error={errors.status?.message}
+          />
+        )}
+      />
 
       <Controller
         name="priority"

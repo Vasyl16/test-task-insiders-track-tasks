@@ -4,11 +4,13 @@ import { EditProjectForm } from '../../features/project/components/EditProjectFo
 import { CreateTaskForm } from '../../features/task/components/CreateTaskForm'
 import { TaskBoard } from '../../widgets/task-board/ui/TaskBoard'
 import { useAuth } from '../../shared/api/services/useAuth'
-import { useTasks } from '../../shared/api/services/useTasks'
 import { useDeleteProject, useProject } from '../../shared/api/services/useProjects'
 import { useWorkspace, useWorkspaceMembers } from '../../shared/api/services/useWorkspaces'
+import { getErrorMessage, isNotFoundOrForbidden } from '../../shared/lib/getErrorMessage'
 import { Button } from '../../shared/ui/Button'
+import { ErrorState } from '../../shared/ui/ErrorState'
 import { Modal } from '../../shared/ui/Modal'
+import { Spinner } from '../../shared/ui/Spinner'
 
 export function ProjectPage() {
   const { workspaceId = '', projectId = '' } = useParams<{
@@ -19,8 +21,13 @@ export function ProjectPage() {
   const { user } = useAuth()
 
   const { data: workspace } = useWorkspace(workspaceId)
-  const { data: project, isLoading: isProjectLoading } = useProject(workspaceId, projectId)
-  const { data: tasks, isLoading: isTasksLoading } = useTasks(workspaceId, projectId)
+  const {
+    data: project,
+    isLoading: isProjectLoading,
+    isError: isProjectError,
+    error: projectError,
+    refetch: refetchProject,
+  } = useProject(workspaceId, projectId)
   const { data: members } = useWorkspaceMembers(workspaceId)
 
   const deleteProject = useDeleteProject(workspaceId)
@@ -44,7 +51,21 @@ export function ProjectPage() {
     return (
       <div>
         {BackLink}
-        <p className="mt-6 font-mono text-sm text-fog">Loading…</p>
+        <div className="mt-10 flex justify-center">
+          <Spinner size="lg" />
+        </div>
+      </div>
+    )
+  }
+
+  if (isProjectError && !isNotFoundOrForbidden(projectError)) {
+    return (
+      <div>
+        {BackLink}
+        <ErrorState
+          message={getErrorMessage(projectError, 'Failed to load this project.')}
+          onRetry={() => void refetchProject()}
+        />
       </div>
     )
   }
@@ -102,25 +123,15 @@ export function ProjectPage() {
         <Button onClick={() => setIsCreateTaskOpen(true)}>New task</Button>
       </div>
 
-      {isTasksLoading && <p className="mt-6 font-mono text-sm text-fog">Loading tasks…</p>}
-
-      {!isTasksLoading && tasks?.length === 0 && (
-        <div className="mt-4 rounded-2xl border border-dashed border-brass/30 p-10 text-center">
-          <p className="font-display text-lg text-paper">No tasks yet</p>
-          <p className="mt-1 text-sm text-fog">Log the first one for this project.</p>
-        </div>
-      )}
-
-      {tasks && tasks.length > 0 && (
-        <TaskBoard
-          workspaceId={workspaceId}
-          projectId={projectId}
-          tasks={tasks}
-          members={members}
-          currentUserId={user?.id}
-          isWorkspaceOwner={isWorkspaceOwner}
-        />
-      )}
+      {/* Each Kanban column fetches, filters, and lazily paginates its own
+          status — there's no project-wide "all tasks" fetch to gate this on. */}
+      <TaskBoard
+        workspaceId={workspaceId}
+        projectId={projectId}
+        members={members}
+        currentUserId={user?.id}
+        isWorkspaceOwner={isWorkspaceOwner}
+      />
 
       {isCreateTaskOpen && (
         <Modal title="New task" onClose={() => setIsCreateTaskOpen(false)}>

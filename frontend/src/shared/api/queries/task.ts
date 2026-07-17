@@ -1,6 +1,19 @@
 import { api } from '../axios/instance'
 import type { Task, TaskPriority, TaskStatus } from '../../../entities/task/model/task'
 
+export interface TaskPage {
+  items: Task[]
+  nextCursor: string | null
+}
+
+export interface TasksPageParams {
+  status?: TaskStatus
+  priority?: TaskPriority
+  assigneeId?: string
+  cursor?: string
+  limit?: number
+}
+
 export interface TaskPayload {
   title: string
   description?: string
@@ -19,9 +32,14 @@ function toRequestBody(payload: Partial<TaskPayload>) {
   }
 }
 
-export async function getTasks(workspaceId: string, projectId: string): Promise<Task[]> {
-  const response = await api.get<Task[]>(
+export async function getTasksPage(
+  workspaceId: string,
+  projectId: string,
+  params: TasksPageParams,
+): Promise<TaskPage> {
+  const response = await api.get<TaskPage>(
     `/workspaces/${workspaceId}/projects/${projectId}/tasks`,
+    { params },
   )
   return response.data
 }

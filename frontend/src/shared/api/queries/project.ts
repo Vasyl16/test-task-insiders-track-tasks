@@ -13,8 +13,19 @@ function toRequestBody(payload: Partial<ProjectPayload>) {
   }
 }
 
-export async function getProjects(workspaceId: string): Promise<Project[]> {
-  const response = await api.get<Project[]>(`/workspaces/${workspaceId}/projects`)
+export interface ProjectPage {
+  items: Project[]
+  total: number
+  page: number
+  limit: number
+  totalPages: number
+}
+
+export async function getProjectsPage(
+  workspaceId: string,
+  params: { page: number; limit: number },
+): Promise<ProjectPage> {
+  const response = await api.get<ProjectPage>(`/workspaces/${workspaceId}/projects`, { params })
   return response.data
 }
 

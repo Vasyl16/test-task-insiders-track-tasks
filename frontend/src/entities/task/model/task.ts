@@ -46,3 +46,17 @@ export interface Task {
   createdAt: string
   updatedAt: string
 }
+
+// One entry per status change, written automatically by the backend — never
+// created directly, so there's no corresponding payload/create type.
+export interface TaskHistoryEntry {
+  id: string
+  taskId: string
+  oldStatus: TaskStatus
+  newStatus: TaskStatus
+  changedAt: string
+  changedBy: {
+    id: string
+    email: string
+  }
+}

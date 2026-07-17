@@ -2,13 +2,23 @@ import { useEffect } from 'react'
 import type { ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
+export type ModalSize = 'md' | 'lg'
+
 export interface ModalProps {
   title: string
   onClose: () => void
   children: ReactNode
+  size?: ModalSize
 }
 
-export function Modal({ title, onClose, children }: ModalProps) {
+const SIZE_CLASSES: Record<ModalSize, string> = {
+  md: 'max-w-md',
+  // Wide + internally scrollable — for content with several stacked
+  // sections (task fields, comments, history) rather than a single form.
+  lg: 'max-w-2xl max-h-[85vh] overflow-y-auto',
+}
+
+export function Modal({ title, onClose, children, size = 'md' }: ModalProps) {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -37,7 +47,7 @@ export function Modal({ title, onClose, children }: ModalProps) {
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="motion-safe:animate-[ledger-card-in_0.2s_ease-out] relative w-full max-w-md rounded-2xl bg-paper p-8 shadow-2xl"
+        className={`motion-safe:animate-[ledger-card-in_0.2s_ease-out] relative w-full rounded-2xl bg-paper p-8 shadow-2xl ${SIZE_CLASSES[size]}`}
       >
         <span
           aria-hidden="true"

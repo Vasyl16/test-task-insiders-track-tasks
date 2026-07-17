@@ -5,18 +5,61 @@ import { CreateProjectForm } from '../../features/project/components/CreateProje
 import { EditProjectForm } from '../../features/project/components/EditProjectForm'
 import { EditWorkspaceForm } from '../../features/workspace/components/EditWorkspaceForm'
 import { useAuth } from '../../shared/api/services/useAuth'
-import { useDeleteProject, useProjects } from '../../shared/api/services/useProjects'
+import { useDeleteProject, useProjectsPage } from '../../shared/api/services/useProjects'
 import { useDeleteWorkspace, useWorkspace } from '../../shared/api/services/useWorkspaces'
+import { getErrorMessage, isNotFoundOrForbidden } from '../../shared/lib/getErrorMessage'
 import { Button } from '../../shared/ui/Button'
+import { ErrorState } from '../../shared/ui/ErrorState'
 import { Modal } from '../../shared/ui/Modal'
+import { Skeleton } from '../../shared/ui/Skeleton'
+import { Spinner } from '../../shared/ui/Spinner'
+
+const PROJECTS_PAGE_SIZE = 10
 
 export function WorkspacePage() {
   const { workspaceId = '' } = useParams<{ workspaceId: string }>()
   const navigate = useNavigate()
   const { user } = useAuth()
 
-  const { data: workspace, isLoading: isWorkspaceLoading } = useWorkspace(workspaceId)
-  const { data: projects, isLoading: isProjectsLoading } = useProjects(workspaceId)
+  const {
+    data: workspace,
+    isLoading: isWorkspaceLoading,
+    isError: isWorkspaceError,
+    error: workspaceError,
+    refetch: refetchWorkspace,
+  } = useWorkspace(workspaceId)
+
+  const [page, setPage] = useState(1)
+  // data (and with it, totalPages) goes undefined the moment a fetch
+  // errors — even with placeholderData, which only bridges the *fetching*
+  // gap, not a settled failure. Without remembering the last known page
+  // count separately, the pager itself would vanish on error, trapping the
+  // user on the broken page with no way to click back to one that works.
+  const [lastKnownTotalPages, setLastKnownTotalPages] = useState<number | null>(null)
+  // Route params change without remounting this component (same route
+  // pattern, different :workspaceId), so page state would otherwise leak
+  // across workspaces. Reset it during render (React's documented pattern
+  // for this) rather than in an effect, which would cost an extra render.
+  const [renderedForWorkspaceId, setRenderedForWorkspaceId] = useState(workspaceId)
+  if (workspaceId !== renderedForWorkspaceId) {
+    setRenderedForWorkspaceId(workspaceId)
+    setPage(1)
+    setLastKnownTotalPages(null)
+  }
+
+  const {
+    data: projectsPage,
+    isLoading: isProjectsLoading,
+    isFetching: isProjectsFetching,
+    isError: isProjectsError,
+    error: projectsError,
+    refetch: refetchProjects,
+  } = useProjectsPage(workspaceId, page, PROJECTS_PAGE_SIZE)
+  const projects = projectsPage?.items
+  if (projectsPage && projectsPage.totalPages !== lastKnownTotalPages) {
+    setLastKnownTotalPages(projectsPage.totalPages)
+  }
+
   const deleteWorkspace = useDeleteWorkspace()
   const deleteProject = useDeleteProject(workspaceId)
 
@@ -40,7 +83,21 @@ export function WorkspacePage() {
     return (
       <div>
         {BackLink}
-        <p className="mt-6 font-mono text-sm text-fog">Loading…</p>
+        <div className="mt-10 flex justify-center">
+          <Spinner size="lg" />
+        </div>
+      </div>
+    )
+  }
+
+  if (isWorkspaceError && !isNotFoundOrForbidden(workspaceError)) {
+    return (
+      <div>
+        {BackLink}
+        <ErrorState
+          message={getErrorMessage(workspaceError, 'Failed to load this workspace.')}
+          onRetry={() => void refetchWorkspace()}
+        />
       </div>
     )
   }
@@ -63,7 +120,7 @@ export function WorkspacePage() {
       return
     }
     // Navigate first, then fire the mutation: this page's own useWorkspace/
-    // useProjects queries must unmount before the mutation's onSuccess
+    // useProjectsPage queries must unmount before the mutation's onSuccess
     // invalidates/removes them, otherwise they'd refetch a workspace that's
     // already gone and log a pointless 404.
     void navigate('/dashboard')
@@ -102,25 +159,45 @@ export function WorkspacePage() {
         <Button onClick={() => setIsCreateProjectOpen(true)}>New project</Button>
       </div>
 
-      {isProjectsLoading && (
-        <p className="mt-6 font-mono text-sm text-fog">Loading projects…</p>
+      {(isProjectsLoading || isProjectsFetching) && (
+        <ul className="mt-4 divide-y divide-brass/15 rounded-2xl bg-paper shadow-lg shadow-black/20">
+          {Array.from({ length: PROJECTS_PAGE_SIZE }, (_, index) => (
+            <li key={index} className="flex items-center gap-4 px-6 py-4">
+              <Skeleton className="h-3.5 w-4 bg-ink/10" />
+              <div className="min-w-0 flex-1">
+                <Skeleton className="h-4 w-1/3 bg-ink/10" />
+                <Skeleton className="mt-2 h-3 w-1/2 bg-ink/10" />
+              </div>
+            </li>
+          ))}
+        </ul>
       )}
 
-      {!isProjectsLoading && projects?.length === 0 && (
+      {isProjectsError && !isProjectsFetching && (
+        <ErrorState
+          message={getErrorMessage(projectsError, 'Failed to load projects for this workspace.')}
+          onRetry={() => void refetchProjects()}
+        />
+      )}
+
+      {!isProjectsLoading && !isProjectsFetching && !isProjectsError && projects?.length === 0 && (
         <div className="mt-4 rounded-2xl border border-dashed border-brass/30 p-10 text-center">
           <p className="font-display text-lg text-paper">No projects yet</p>
           <p className="mt-1 text-sm text-fog">Log the first one for this workspace.</p>
         </div>
       )}
 
-      {projects && projects.length > 0 && (
+      {!isProjectsLoading && !isProjectsFetching && !isProjectsError && projects && projects.length > 0 && (
         <ul className="mt-4 divide-y divide-brass/15 rounded-2xl bg-paper shadow-lg shadow-black/20">
           {projects.map((project, index) => {
             const canManage = isOwner || project.createdBy === user?.id
+            // Global ledger position, not just this page's row index — page
+            // 2 of a 10-per-page list still starts numbering at 11.
+            const ledgerNumber = (page - 1) * PROJECTS_PAGE_SIZE + index + 1
             return (
               <li key={project.id} className="flex items-center gap-4 px-6 py-4">
                 <span className="font-mono text-sm text-ink/35 tabular-nums">
-                  {String(index + 1).padStart(2, '0')}
+                  {String(ledgerNumber).padStart(2, '0')}
                 </span>
                 <Link
                   to={`/workspaces/${workspaceId}/projects/${project.id}`}
@@ -157,6 +234,31 @@ export function WorkspacePage() {
             )
           })}
         </ul>
+      )}
+
+      {lastKnownTotalPages !== null && lastKnownTotalPages > 1 && (
+        <div className="mt-4 flex items-center justify-between">
+          <Button
+            variant="nav"
+            onClick={() => setPage((current) => Math.max(1, current - 1))}
+            disabled={page <= 1}
+          >
+            Previous
+          </Button>
+          <span className="flex items-center gap-2 font-mono text-xs tracking-wide text-fog uppercase">
+            Page {page} of {lastKnownTotalPages}
+            {isProjectsFetching && <Spinner size="sm" />}
+          </span>
+          <Button
+            variant="nav"
+            onClick={() =>
+              setPage((current) => Math.min(lastKnownTotalPages, current + 1))
+            }
+            disabled={page >= lastKnownTotalPages}
+          >
+            Next
+          </Button>
+        </div>
       )}
 
       {isCreateProjectOpen && (

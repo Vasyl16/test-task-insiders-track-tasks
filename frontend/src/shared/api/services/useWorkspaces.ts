@@ -1,19 +1,20 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   createWorkspace,
   deleteWorkspace,
   getWorkspace,
   getWorkspaceMembers,
-  getWorkspaces,
+  getWorkspacesPage,
   updateWorkspace,
   type WorkspacePayload,
 } from '../queries/workspace'
 import { queryKeys } from '../queryKeys'
 
-export function useWorkspaces() {
+export function useWorkspacesPage(page: number, limit: number) {
   return useQuery({
-    queryKey: queryKeys.workspaces.all,
-    queryFn: getWorkspaces,
+    queryKey: queryKeys.workspaces.list(page, limit),
+    queryFn: () => getWorkspacesPage({ page, limit }),
+    placeholderData: keepPreviousData,
   })
 }
 
@@ -39,7 +40,7 @@ export function useCreateWorkspace() {
   return useMutation({
     mutationFn: (payload: WorkspacePayload) => createWorkspace(payload),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.all })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.lists })
     },
   })
 }
@@ -51,7 +52,7 @@ export function useUpdateWorkspace(id: string) {
     mutationFn: (payload: Partial<WorkspacePayload>) => updateWorkspace(id, payload),
     onSuccess: (workspace) => {
       queryClient.setQueryData(queryKeys.workspaces.detail(id), workspace)
-      void queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.all })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.lists })
     },
   })
 }
@@ -62,12 +63,11 @@ export function useDeleteWorkspace() {
   return useMutation({
     mutationFn: (id: string) => deleteWorkspace(id),
     onSuccess: (_data, id) => {
-      // exact: true — a fuzzy match would also refetch this workspace's now-gone
-      // detail/projects queries if they're still mounted (e.g. its own page,
-      // mid-navigation-away), which would 404 for no reason.
+      // workspaces.lists is a prefix only the paged list keys share, so this
+      // can't also match (and 404-refetch) this workspace's own detail query
+      // the way invalidating workspaces.all would — no exact:true needed.
       void queryClient.invalidateQueries({
-        queryKey: queryKeys.workspaces.all,
-        exact: true,
+        queryKey: queryKeys.workspaces.lists,
       })
       queryClient.removeQueries({ queryKey: queryKeys.workspaces.detail(id) })
       queryClient.removeQueries({ queryKey: queryKeys.projects.all(id) })

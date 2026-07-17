@@ -1,62 +1,48 @@
-import { useState } from 'react'
-import type { ReactNode } from 'react'
-import {
-  DndContext,
-  DragOverlay,
-  KeyboardSensor,
-  PointerSensor,
-  closestCenter,
-  useDraggable,
-  useDroppable,
-  useSensor,
-  useSensors,
-} from '@dnd-kit/core'
-import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core'
-import { EditTaskForm } from '../../../features/task/components/EditTaskForm'
-import {
-  TASK_PRIORITY_BORDER_CLASSES,
-  TASK_PRIORITY_LABELS,
-  TASK_STATUS_LABELS,
-  taskStatusValues,
-} from '../../../entities/task/model/task'
-import type { Task, TaskStatus } from '../../../entities/task/model/task'
-import type { WorkspaceMember } from '../../../entities/workspace/model/workspace-member'
-import { useDeleteTask, useUpdateTask } from '../../../shared/api/services/useTasks'
-import { Modal } from '../../../shared/ui/Modal'
+import { useEffect, useRef, useState } from "react";
+import { DndContext, DragOverlay, KeyboardSensor, PointerSensor, closestCenter, useDraggable, useDroppable, useSensor, useSensors } from "@dnd-kit/core";
+import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core";
+import { EditTaskForm } from "../../../features/task/components/EditTaskForm";
+import { TaskDetailModal } from "../../task-detail/ui/TaskDetailModal";
+import { TASK_PRIORITY_BORDER_CLASSES, TASK_PRIORITY_LABELS, TASK_STATUS_LABELS, taskStatusValues } from "../../../entities/task/model/task";
+import type { Task, TaskStatus } from "../../../entities/task/model/task";
+import type { WorkspaceMember } from "../../../entities/workspace/model/workspace-member";
+import { useDeleteTask, useTasksByStatus, useUpdateTask } from "../../../shared/api/services/useTasks";
+import { getErrorMessage } from "../../../shared/lib/getErrorMessage";
+import { Modal } from "../../../shared/ui/Modal";
+import { Skeleton } from "../../../shared/ui/Skeleton";
+import { Spinner } from "../../../shared/ui/Spinner";
 
 interface TaskBoardProps {
-  workspaceId: string
-  projectId: string
-  tasks: Task[]
-  members: WorkspaceMember[] | undefined
-  currentUserId: string | undefined
-  isWorkspaceOwner: boolean
+  workspaceId: string;
+  projectId: string;
+  members: WorkspaceMember[] | undefined;
+  currentUserId: string | undefined;
+  isWorkspaceOwner: boolean;
 }
 
-export function TaskBoard({
-  workspaceId,
-  projectId,
-  tasks,
-  members,
-  currentUserId,
-  isWorkspaceOwner,
-}: TaskBoardProps) {
-  const updateTask = useUpdateTask(workspaceId, projectId)
-  const deleteTask = useDeleteTask(workspaceId, projectId)
-  const [editingTask, setEditingTask] = useState<Task | null>(null)
+// Cards carry their own Task via useDraggable's `data`, so the drag handlers
+// never need one flat list of every task across all (independently, lazily
+// loaded) columns just to look one up by id.
+interface DraggableData {
+  task: Task;
+}
+
+export function TaskBoard({ workspaceId, projectId, members, currentUserId, isWorkspaceOwner }: TaskBoardProps) {
+  const updateTask = useUpdateTask(workspaceId, projectId);
+  const deleteTask = useDeleteTask(workspaceId, projectId);
+  // selectedTask: read-only detail (fields + status history + comments),
+  // opened by clicking the card body. editingTask: the actual edit form, in
+  // its own separate modal, opened only via the explicit Edit button.
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
   // The only state DnD Kit itself needs: which task is being dragged, so
   // <DragOverlay> knows what to render. Everything else (per-card "am I the
   // one being dragged" opacity, per-column "is something hovering over me"
   // highlight) comes straight from useDraggable/useDroppable's own return
   // values — no parallel state to keep in sync with the library's.
-  const [activeTask, setActiveTask] = useState<Task | null>(null)
+  const [activeTask, setActiveTask] = useState<Task | null>(null);
 
-  const memberEmailById = new Map(members?.map((member) => [member.user.id, member.user.email]))
-
-  // Oldest-first within each column — same "honest ledger number" reasoning
-  // as the flat lists elsewhere in the app, even though these columns don't
-  // show a number: newest-added still lands visually last, not first.
-  const chronological = [...tasks].reverse()
+  const memberEmailById = new Map(members?.map((member) => [member.user.id, member.user.email]));
 
   const sensors = useSensors(
     // A small movement threshold before a drag "activates" — without it, a
@@ -64,28 +50,27 @@ export function TaskBoard({
     // register as a drag attempt on pointerdown.
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor),
-  )
+  );
 
-  const resolveAssigneeEmail = (task: Task) =>
-    task.assigneeId ? (memberEmailById.get(task.assigneeId) ?? 'Unknown') : null
+  const resolveAssigneeEmail = (task: Task) => (task.assigneeId ? (memberEmailById.get(task.assigneeId) ?? "Unknown") : null);
 
   const handleDragStart = (event: DragStartEvent) => {
-    setActiveTask(tasks.find((task) => task.id === event.active.id) ?? null)
-  }
+    setActiveTask((event.active.data.current as DraggableData | undefined)?.task ?? null);
+  };
 
   const handleDragEnd = (event: DragEndEvent) => {
-    setActiveTask(null)
-    const { active, over } = event
+    setActiveTask(null);
+    const { active, over } = event;
     if (!over) {
-      return
+      return;
     }
-    const destinationStatus = over.id as TaskStatus
-    const task = tasks.find((t) => t.id === active.id)
+    const destinationStatus = over.id as TaskStatus;
+    const task = (active.data.current as DraggableData | undefined)?.task;
     if (!task || task.status === destinationStatus) {
-      return
+      return;
     }
-    updateTask.mutate({ id: task.id, status: destinationStatus })
-  }
+    updateTask.mutate({ id: task.id, status: destinationStatus });
+  };
 
   return (
     <DndContext
@@ -96,45 +81,44 @@ export function TaskBoard({
       onDragCancel={() => setActiveTask(null)}
     >
       <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        {taskStatusValues.map((status) => {
-          const columnTasks = chronological.filter((task) => task.status === status)
-
-          return (
-            <TaskColumn key={status} status={status} taskCount={columnTasks.length}>
-              {columnTasks.length === 0 && (
-                <p className="px-2 py-6 text-center font-mono text-xs text-fog">
-                  Drop tasks here
-                </p>
-              )}
-
-              {columnTasks.map((task) => {
-                const canManage = isWorkspaceOwner || task.createdBy === currentUserId
-
-                return (
-                  <TaskCard
-                    key={task.id}
-                    task={task}
-                    assigneeEmail={resolveAssigneeEmail(task)}
-                    canManage={canManage}
-                    onEdit={() => setEditingTask(task)}
-                    onRemove={() => void deleteTask.mutateAsync(task.id)}
-                  />
-                )
-              })}
-            </TaskColumn>
-          )
-        })}
+        {taskStatusValues.map((status) => (
+          <TaskColumn
+            key={status}
+            workspaceId={workspaceId}
+            projectId={projectId}
+            status={status}
+            currentUserId={currentUserId}
+            isWorkspaceOwner={isWorkspaceOwner}
+            resolveAssigneeEmail={resolveAssigneeEmail}
+            onOpen={setSelectedTask}
+            onEdit={setEditingTask}
+            onRemove={(id) => void deleteTask.mutateAsync(id)}
+          />
+        ))}
       </div>
 
       <DragOverlay>
         {activeTask && (
-          <div
-            className={`rounded-xl border-t-4 bg-paper p-3 shadow-xl shadow-black/30 ${TASK_PRIORITY_BORDER_CLASSES[activeTask.priority]}`}
-          >
-            <TaskCardContent task={activeTask} assigneeEmail={resolveAssigneeEmail(activeTask)} />
+          <div className={`rounded-xl border-t-4 bg-paper p-2.5 shadow-xl shadow-black/30 ${TASK_PRIORITY_BORDER_CLASSES[activeTask.priority]}`}>
+            <TaskCardContent
+              task={activeTask}
+              assigneeEmail={resolveAssigneeEmail(activeTask)}
+            />
           </div>
         )}
       </DragOverlay>
+
+      {selectedTask && (
+        <TaskDetailModal
+          workspaceId={workspaceId}
+          projectId={projectId}
+          task={selectedTask}
+          assigneeEmail={resolveAssigneeEmail(selectedTask)}
+          currentUserId={currentUserId}
+          isWorkspaceOwner={isWorkspaceOwner}
+          onClose={() => setSelectedTask(null)}
+        />
+      )}
 
       {editingTask && (
         <Modal title="Edit task" onClose={() => setEditingTask(null)}>
@@ -148,68 +132,207 @@ export function TaskBoard({
         </Modal>
       )}
     </DndContext>
-  )
+  );
 }
 
 interface TaskColumnProps {
-  status: TaskStatus
-  taskCount: number
-  children: ReactNode
+  workspaceId: string;
+  projectId: string;
+  status: TaskStatus;
+  currentUserId: string | undefined;
+  isWorkspaceOwner: boolean;
+  resolveAssigneeEmail: (task: Task) => string | null;
+  onOpen: (task: Task) => void;
+  onEdit: (task: Task) => void;
+  onRemove: (id: string) => void;
 }
 
-function TaskColumn({ status, taskCount, children }: TaskColumnProps) {
+// Fixed height + its own scroll container is what makes "lazy loading" and
+// "infinite scroll" a per-column thing rather than a per-board thing — each
+// status only ever fetches (and re-fetches) its own pages. Height itself is
+// just this one Tailwind arbitrary-value class — bump/shrink it here only.
+const COLUMN_SCROLL_CLASS = "max-h-[60vh] overflow-y-auto";
+
+function TaskColumn({ workspaceId, projectId, status, currentUserId, isWorkspaceOwner, resolveAssigneeEmail, onOpen, onEdit, onRemove }: TaskColumnProps) {
   // The droppable id *is* the destination status — handleDragEnd reads
   // `over.id` straight back as a TaskStatus, no separate lookup table.
-  const { setNodeRef, isOver } = useDroppable({ id: status })
+  const { setNodeRef: setDroppableRef, isOver } = useDroppable({ id: status });
+  const {
+    data,
+    isLoading,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+    isError,
+    error,
+    isFetchNextPageError,
+    refetch,
+  } = useTasksByStatus(workspaceId, projectId, status);
+
+  const tasks = data?.pages.flatMap((page) => page.items) ?? [];
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  // Load the next page when the sentinel at the bottom of *this column's own
+  // scroll container* comes into view — root is the column, not the
+  // viewport, so scrolling the page itself never triggers a fetch.
+  useEffect(() => {
+    const root = scrollRef.current;
+    const sentinel = sentinelRef.current;
+    if (!root || !sentinel || !hasNextPage) {
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          void fetchNextPage();
+        }
+      },
+      { root, rootMargin: "100px" },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasNextPage, fetchNextPage]);
 
   return (
     <div
-      ref={setNodeRef}
-      className={`rounded-2xl bg-desk-raised p-3 transition-shadow ${
-        isOver ? 'ring-2 ring-brass' : ''
-      }`}
+      ref={setDroppableRef}
+      className={`rounded-2xl bg-desk-raised p-3 transition-shadow ${isOver ? "ring-2 ring-brass" : ""}`}
     >
       <div className="flex items-center justify-between px-2 pb-3">
-        <h3 className="font-mono text-xs tracking-[0.2em] text-brass uppercase">
-          {TASK_STATUS_LABELS[status]}
-        </h3>
-        <span className="font-mono text-xs text-fog">{taskCount}</span>
+        <h3 className="font-mono text-xs tracking-[0.2em] text-brass uppercase">{TASK_STATUS_LABELS[status]}</h3>
+        <span className="font-mono text-xs text-fog">
+          {tasks.length}
+          {hasNextPage ? "+" : ""}
+        </span>
       </div>
 
-      <div className="space-y-2">{children}</div>
+      <div
+        ref={scrollRef}
+        className={`space-y-1.5 ${COLUMN_SCROLL_CLASS}`}
+      >
+        {isLoading &&
+          Array.from({ length: 3 }, (_, index) => <TaskCardSkeleton key={index} />)}
+
+        {isError && !isLoading && tasks.length === 0 && (
+          <div className="px-2 py-6 text-center">
+            <p className="font-mono text-xs text-oxblood">
+              {getErrorMessage(error, "Failed to load tasks.")}
+            </p>
+            <button
+              type="button"
+              onClick={() => void refetch()}
+              className="mt-2 font-mono text-[11px] tracking-wide text-brass-deep uppercase transition-colors hover:text-brass"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
+        {!isLoading && !isError && tasks.length === 0 && (
+          <p className="px-2 py-6 text-center font-mono text-xs text-fog">Drop tasks here</p>
+        )}
+
+        {tasks.map((task) => {
+          const canManage = isWorkspaceOwner || task.createdBy === currentUserId;
+
+          return (
+            <TaskCard
+              key={task.id}
+              task={task}
+              assigneeEmail={resolveAssigneeEmail(task)}
+              canManage={canManage}
+              onOpen={() => onOpen(task)}
+              onEdit={() => onEdit(task)}
+              onRemove={() => onRemove(task.id)}
+            />
+          );
+        })}
+
+        {tasks.length > 0 && (
+          <div
+            ref={sentinelRef}
+            className="h-px"
+          />
+        )}
+
+        {isFetchingNextPage && (
+          <div className="flex justify-center py-2">
+            <Spinner size="sm" />
+          </div>
+        )}
+
+        {isFetchNextPageError && !isFetchingNextPage && (
+          <div className="flex flex-col items-center gap-1 py-2">
+            <p className="font-mono text-[11px] text-oxblood">Failed to load more.</p>
+            <button
+              type="button"
+              onClick={() => void fetchNextPage()}
+              className="font-mono text-[11px] tracking-wide text-brass-deep uppercase transition-colors hover:text-brass"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+      </div>
     </div>
-  )
+  );
+}
+
+// Same rounded-xl/p-2.5 shape as a real TaskCard (minus the priority border,
+// since there's no priority to show yet) — placeholder bars stand in for the
+// title and the priority-· assignee line.
+function TaskCardSkeleton() {
+  return (
+    <div className="space-y-1 rounded-xl bg-paper p-2.5 shadow-md shadow-black/20">
+      <Skeleton className="h-4 w-3/4 bg-ink/10" />
+      <Skeleton className="h-3 w-1/2 bg-ink/10" />
+    </div>
+  );
 }
 
 interface TaskCardProps {
-  task: Task
-  assigneeEmail: string | null
-  canManage: boolean
-  onEdit: () => void
-  onRemove: () => void
+  task: Task;
+  assigneeEmail: string | null;
+  canManage: boolean;
+  onOpen: () => void;
+  onEdit: () => void;
+  onRemove: () => void;
 }
 
-function TaskCard({ task, assigneeEmail, canManage, onEdit, onRemove }: TaskCardProps) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: task.id })
+function TaskCard({ task, assigneeEmail, canManage, onOpen, onEdit, onRemove }: TaskCardProps) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: task.id,
+    data: { task } as DraggableData,
+  });
 
   return (
     <div
       ref={setNodeRef}
       {...listeners}
       {...attributes}
+      onClick={onOpen}
       // touch-none: without it, a touchscreen drag also tries to scroll the
       // page underneath it — PointerSensor needs the browser to hand touch
       // gestures over to it instead.
-      className={`cursor-grab touch-none space-y-1.5 rounded-xl border-t-4 bg-paper p-3 shadow-md shadow-black/20 transition-opacity active:cursor-grabbing ${TASK_PRIORITY_BORDER_CLASSES[task.priority]} ${
-        isDragging ? 'opacity-40' : ''
-      }`}
+      className={`cursor-pointer touch-none space-y-1 rounded-xl border-t-4 bg-paper p-2.5 shadow-md shadow-black/20 transition-opacity active:cursor-grabbing ${TASK_PRIORITY_BORDER_CLASSES[task.priority]} ${isDragging ? "opacity-40" : ""}`}
     >
-      <TaskCardContent task={task} assigneeEmail={assigneeEmail} />
+      <TaskCardContent
+        task={task}
+        assigneeEmail={assigneeEmail}
+      />
 
-      <div className="flex items-center justify-end gap-3 pt-1">
+      <div className="flex items-center justify-end gap-3 pt-0.5">
         <button
           type="button"
-          onClick={onEdit}
+          onClick={(event) => {
+            // Without these, the click would also bubble up to the card's
+            // own onClick and open the read-only detail view on top of
+            // editing/removing it.
+            event.stopPropagation();
+            onEdit();
+          }}
           className="font-mono text-[11px] tracking-wide text-brass-deep uppercase transition-colors hover:text-brass"
         >
           Edit
@@ -218,7 +341,10 @@ function TaskCard({ task, assigneeEmail, canManage, onEdit, onRemove }: TaskCard
         {canManage && (
           <button
             type="button"
-            onClick={onRemove}
+            onClick={(event) => {
+              event.stopPropagation();
+              onRemove();
+            }}
             className="font-mono text-[11px] tracking-wide text-oxblood/70 uppercase transition-colors hover:text-oxblood"
           >
             Remove
@@ -226,12 +352,12 @@ function TaskCard({ task, assigneeEmail, canManage, onEdit, onRemove }: TaskCard
         )}
       </div>
     </div>
-  )
+  );
 }
 
 interface TaskCardContentProps {
-  task: Task
-  assigneeEmail: string | null
+  task: Task;
+  assigneeEmail: string | null;
 }
 
 // Shared between the in-column TaskCard and the DragOverlay's floating clone
@@ -239,17 +365,13 @@ interface TaskCardContentProps {
 function TaskCardContent({ task, assigneeEmail }: TaskCardContentProps) {
   return (
     <>
-      <p
-        className={`font-display text-base leading-snug text-ink ${task.status === 'DONE' ? 'line-through opacity-50' : ''}`}
-      >
-        {task.title}
-      </p>
+      <p className={`font-display text-base leading-snug text-ink ${task.status === "DONE" ? "line-through opacity-50" : ""}`}>{task.title}</p>
 
       {task.description && <p className="truncate text-xs text-ink/60">{task.description}</p>}
 
       <p className="font-mono text-[11px] text-ink/40">
-        {TASK_PRIORITY_LABELS[task.priority]} · {assigneeEmail ?? 'Unassigned'}
+        {TASK_PRIORITY_LABELS[task.priority]} · {assigneeEmail ?? "Unassigned"}
       </p>
     </>
-  )
+  );
 }
