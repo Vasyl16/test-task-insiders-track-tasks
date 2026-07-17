@@ -6,6 +6,7 @@ import { AppService } from './app.service';
 import { AllExceptionsFilter } from './common/filters';
 import { AuthModule } from './modules/auth/auth.module';
 import { CommentsModule } from './modules/comments/comments.module';
+import { EmailModule } from './modules/email/email.module';
 import { HistoryModule } from './modules/history/history.module';
 import { ProjectsModule } from './modules/projects/projects.module';
 import { TasksModule } from './modules/tasks/tasks.module';
@@ -28,6 +29,7 @@ import configuration from './config';
     TasksModule,
     CommentsModule,
     HistoryModule,
+    EmailModule,
   ],
   controllers: [AppController],
   providers: [

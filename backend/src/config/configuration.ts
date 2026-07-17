@@ -10,4 +10,8 @@ export default (): AppConfig => ({
     refreshSecret: process.env.JWT_REFRESH_SECRET || 'change-me-refresh',
     refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
   },
+  email: {
+    from: process.env.EMAIL_FROM || '',
+    token: process.env.EMAIL_TOKEN || '',
+  },
 });
