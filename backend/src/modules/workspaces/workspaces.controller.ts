@@ -8,14 +8,17 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { CurrentUser } from '@common/decorators';
 import { JwtAuthGuard } from '@common/guards';
 import { UserResponseDto } from '@modules/auth/dto/user-response.dto';
 import { CreateWorkspaceDto } from './dto/create-workspace.dto';
+import { FindWorkspacesQueryDto } from './dto/find-workspaces-query.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
 import { UpdateWorkspaceDto } from './dto/update-workspace.dto';
+import { WorkspaceListResponseDto } from './dto/workspace-list-response.dto';
 import { WorkspaceMemberResponseDto } from './dto/workspace-member-response.dto';
 import { WorkspaceResponseDto } from './dto/workspace-response.dto';
 import { WorkspacesService } from './workspaces.service';
@@ -36,8 +39,9 @@ export class WorkspacesController {
   @Get()
   findMine(
     @CurrentUser() user: UserResponseDto,
-  ): Promise<WorkspaceResponseDto[]> {
-    return this.workspacesService.findAllForUser(user.id);
+    @Query() query: FindWorkspacesQueryDto,
+  ): Promise<WorkspaceListResponseDto> {
+    return this.workspacesService.findAllForUser(user.id, query);
   }
 
   @Get(':id')

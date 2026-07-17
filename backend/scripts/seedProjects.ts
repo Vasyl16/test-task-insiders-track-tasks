@@ -2,7 +2,7 @@ import 'dotenv/config';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 
-const WORKSPACE_ID = 'REPLACE_WITH_WORKSPACE_ID';
+const WORKSPACE_ID = '73950ba3-ba20-4186-90b4-65cdd4486aa0';
 
 const PROJECT_COUNT = 10;
 

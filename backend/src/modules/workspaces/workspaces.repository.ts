@@ -45,10 +45,21 @@ export class WorkspacesRepository {
     return this.prisma.workspace.findUnique({ where: { id } });
   }
 
-  findManyForUser(userId: string): Promise<Workspace[]> {
+  findManyForUser(
+    userId: string,
+    params: { skip: number; take: number },
+  ): Promise<Workspace[]> {
     return this.prisma.workspace.findMany({
       where: { members: { some: { userId } } },
       orderBy: { createdAt: 'desc' },
+      skip: params.skip,
+      take: params.take,
+    });
+  }
+
+  countForUser(userId: string): Promise<number> {
+    return this.prisma.workspace.count({
+      where: { members: { some: { userId } } },
     });
   }
 

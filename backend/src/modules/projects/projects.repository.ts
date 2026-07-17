@@ -32,11 +32,20 @@ export class ProjectsRepository {
     return this.prisma.project.findUnique({ where: { id } });
   }
 
-  findManyForWorkspace(workspaceId: string): Promise<Project[]> {
+  findManyForWorkspace(
+    workspaceId: string,
+    params: { skip: number; take: number },
+  ): Promise<Project[]> {
     return this.prisma.project.findMany({
       where: { workspaceId },
       orderBy: { createdAt: 'desc' },
+      skip: params.skip,
+      take: params.take,
     });
+  }
+
+  countForWorkspace(workspaceId: string): Promise<number> {
+    return this.prisma.project.count({ where: { workspaceId } });
   }
 
   update(

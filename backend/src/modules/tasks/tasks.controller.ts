@@ -8,12 +8,15 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { CurrentUser } from '@common/decorators';
 import { JwtAuthGuard } from '@common/guards';
 import { UserResponseDto } from '@modules/auth/dto/user-response.dto';
 import { CreateTaskDto } from './dto/create-task.dto';
+import { FindTasksQueryDto } from './dto/find-tasks-query.dto';
+import { TaskListResponseDto } from './dto/task-list-response.dto';
 import { TaskResponseDto } from './dto/task-response.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { TasksService } from './tasks.service';
@@ -38,8 +41,14 @@ export class TasksController {
     @CurrentUser() user: UserResponseDto,
     @Param('workspaceId') workspaceId: string,
     @Param('projectId') projectId: string,
-  ): Promise<TaskResponseDto[]> {
-    return this.tasksService.findAllForProject(workspaceId, projectId, user.id);
+    @Query() query: FindTasksQueryDto,
+  ): Promise<TaskListResponseDto> {
+    return this.tasksService.findAllForProject(
+      workspaceId,
+      projectId,
+      user.id,
+      query,
+    );
   }
 
   @Get(':id')

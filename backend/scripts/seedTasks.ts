@@ -2,7 +2,7 @@ import 'dotenv/config';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient, TaskPriority, TaskStatus } from '@prisma/client';
 
-const PROJECT_ID = 'REPLACE_WITH_PROJECT_ID';
+const PROJECT_ID = 'cf444177-6662-4add-aaa8-e50568731106';
 
 const MIN_TASKS = 30;
 const MAX_TASKS = 40;

@@ -8,12 +8,15 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { CurrentUser } from '@common/decorators';
 import { JwtAuthGuard } from '@common/guards';
 import { UserResponseDto } from '@modules/auth/dto/user-response.dto';
 import { CreateProjectDto } from './dto/create-project.dto';
+import { FindProjectsQueryDto } from './dto/find-projects-query.dto';
+import { ProjectListResponseDto } from './dto/project-list-response.dto';
 import { ProjectResponseDto } from './dto/project-response.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { ProjectsService } from './projects.service';
@@ -36,8 +39,13 @@ export class ProjectsController {
   findAll(
     @CurrentUser() user: UserResponseDto,
     @Param('workspaceId') workspaceId: string,
-  ): Promise<ProjectResponseDto[]> {
-    return this.projectsService.findAllForWorkspace(workspaceId, user.id);
+    @Query() query: FindProjectsQueryDto,
+  ): Promise<ProjectListResponseDto> {
+    return this.projectsService.findAllForWorkspace(
+      workspaceId,
+      user.id,
+      query,
+    );
   }
 
   @Get(':id')

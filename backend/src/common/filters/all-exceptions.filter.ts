@@ -30,7 +30,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const message =
       typeof errorResponse === 'string'
         ? errorResponse
-        : (errorResponse as { message?: string }).message || 'Internal server error';
+        : (errorResponse as { message?: string }).message ||
+          'Internal server error';
 
     this.logger.error(
       `${request.method} ${request.url} ${status}`,

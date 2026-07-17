@@ -1,0 +1,162 @@
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { Comment, WorkspaceMember, WorkspaceRole } from '@prisma/client';
+import { CommentsRepository } from './comments.repository';
+import { CommentResponseDto } from './dto/comment-response.dto';
+import { CreateCommentDto } from './dto/create-comment.dto';
+import { UpdateCommentDto } from './dto/update-comment.dto';
+
+const WORKSPACE_NOT_FOUND_MESSAGE = 'Workspace not found';
+const PROJECT_NOT_FOUND_MESSAGE = 'Project not found';
+const TASK_NOT_FOUND_MESSAGE = 'Task not found';
+const COMMENT_NOT_FOUND_MESSAGE = 'Comment not found';
+const NOT_A_MEMBER_MESSAGE = 'You are not a member of this workspace';
+const NOT_ALLOWED_MESSAGE =
+  'Only the comment author or workspace owner can perform this action';
+
+@Injectable()
+export class CommentsService {
+  constructor(private readonly commentsRepository: CommentsRepository) {}
+
+  async create(
+    workspaceId: string,
+    projectId: string,
+    taskId: string,
+    userId: string,
+    dto: CreateCommentDto,
+  ): Promise<CommentResponseDto> {
+    await this.getWorkspaceOrThrow(workspaceId);
+    await this.getProjectOrThrow(workspaceId, projectId);
+    await this.getTaskOrThrow(projectId, taskId);
+    await this.assertMember(workspaceId, userId);
+
+    const comment = await this.commentsRepository.create({
+      taskId,
+      authorId: userId,
+      content: dto.content,
+    });
+
+    return new CommentResponseDto(comment);
+  }
+
+  async findAllForTask(
+    workspaceId: string,
+    projectId: string,
+    taskId: string,
+    userId: string,
+  ): Promise<CommentResponseDto[]> {
+    await this.getWorkspaceOrThrow(workspaceId);
+    await this.getProjectOrThrow(workspaceId, projectId);
+    await this.getTaskOrThrow(projectId, taskId);
+    await this.assertMember(workspaceId, userId);
+
+    const comments = await this.commentsRepository.findManyForTask(taskId);
+    return comments.map((comment) => new CommentResponseDto(comment));
+  }
+
+  async update(
+    workspaceId: string,
+    projectId: string,
+    taskId: string,
+    id: string,
+    userId: string,
+    dto: UpdateCommentDto,
+  ): Promise<CommentResponseDto> {
+    await this.getWorkspaceOrThrow(workspaceId);
+    await this.getProjectOrThrow(workspaceId, projectId);
+    await this.getTaskOrThrow(projectId, taskId);
+    const comment = await this.getCommentOrThrow(taskId, id);
+    await this.assertAuthorOrOwner(workspaceId, userId, comment);
+
+    const updated = await this.commentsRepository.update(id, {
+      content: dto.content,
+    });
+    return new CommentResponseDto(updated);
+  }
+
+  async remove(
+    workspaceId: string,
+    projectId: string,
+    taskId: string,
+    id: string,
+    userId: string,
+  ): Promise<void> {
+    await this.getWorkspaceOrThrow(workspaceId);
+    await this.getProjectOrThrow(workspaceId, projectId);
+    await this.getTaskOrThrow(projectId, taskId);
+    const comment = await this.getCommentOrThrow(taskId, id);
+    await this.assertAuthorOrOwner(workspaceId, userId, comment);
+
+    await this.commentsRepository.delete(id);
+  }
+
+  private async getWorkspaceOrThrow(workspaceId: string): Promise<void> {
+    const workspace =
+      await this.commentsRepository.findWorkspaceById(workspaceId);
+    if (!workspace) {
+      throw new NotFoundException(WORKSPACE_NOT_FOUND_MESSAGE);
+    }
+  }
+
+  private async getProjectOrThrow(
+    workspaceId: string,
+    projectId: string,
+  ): Promise<void> {
+    const project = await this.commentsRepository.findProjectById(projectId);
+    if (!project || project.workspaceId !== workspaceId) {
+      throw new NotFoundException(PROJECT_NOT_FOUND_MESSAGE);
+    }
+  }
+
+  private async getTaskOrThrow(
+    projectId: string,
+    taskId: string,
+  ): Promise<void> {
+    const task = await this.commentsRepository.findTaskById(taskId);
+    if (!task || task.projectId !== projectId) {
+      throw new NotFoundException(TASK_NOT_FOUND_MESSAGE);
+    }
+  }
+
+  private async getCommentOrThrow(
+    taskId: string,
+    id: string,
+  ): Promise<Comment> {
+    const comment = await this.commentsRepository.findById(id);
+    if (!comment || comment.taskId !== taskId) {
+      throw new NotFoundException(COMMENT_NOT_FOUND_MESSAGE);
+    }
+    return comment;
+  }
+
+  private async assertMember(
+    workspaceId: string,
+    userId: string,
+  ): Promise<WorkspaceMember> {
+    const membership = await this.commentsRepository.findWorkspaceMembership(
+      workspaceId,
+      userId,
+    );
+    if (!membership) {
+      throw new ForbiddenException(NOT_A_MEMBER_MESSAGE);
+    }
+    return membership;
+  }
+
+  private async assertAuthorOrOwner(
+    workspaceId: string,
+    userId: string,
+    comment: Comment,
+  ): Promise<void> {
+    const membership = await this.assertMember(workspaceId, userId);
+    const isAuthor = comment.authorId === userId;
+    const isOwner = membership.role === WorkspaceRole.OWNER;
+
+    if (!isAuthor && !isOwner) {
+      throw new ForbiddenException(NOT_ALLOWED_MESSAGE);
+    }
+  }
+}

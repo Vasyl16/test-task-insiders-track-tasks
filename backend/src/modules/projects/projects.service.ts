@@ -5,6 +5,8 @@ import {
 } from '@nestjs/common';
 import { Project, WorkspaceMember, WorkspaceRole } from '@prisma/client';
 import { CreateProjectDto } from './dto/create-project.dto';
+import { FindProjectsQueryDto } from './dto/find-projects-query.dto';
+import { ProjectListResponseDto } from './dto/project-list-response.dto';
 import { ProjectResponseDto } from './dto/project-response.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { ProjectsRepository } from './projects.repository';
@@ -40,13 +42,26 @@ export class ProjectsService {
   async findAllForWorkspace(
     workspaceId: string,
     userId: string,
-  ): Promise<ProjectResponseDto[]> {
+    query: FindProjectsQueryDto,
+  ): Promise<ProjectListResponseDto> {
     await this.getWorkspaceOrThrow(workspaceId);
     await this.assertMember(workspaceId, userId);
 
-    const projects =
-      await this.projectsRepository.findManyForWorkspace(workspaceId);
-    return projects.map((project) => new ProjectResponseDto(project));
+    const skip = (query.page - 1) * query.limit;
+    const [projects, total] = await Promise.all([
+      this.projectsRepository.findManyForWorkspace(workspaceId, {
+        skip,
+        take: query.limit,
+      }),
+      this.projectsRepository.countForWorkspace(workspaceId),
+    ]);
+
+    return new ProjectListResponseDto(
+      projects.map((project) => new ProjectResponseDto(project)),
+      total,
+      query.page,
+      query.limit,
+    );
   }
 
   async findOne(

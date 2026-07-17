@@ -6,8 +6,10 @@ import {
 } from '@nestjs/common';
 import { Workspace, WorkspaceMember, WorkspaceRole } from '@prisma/client';
 import { CreateWorkspaceDto } from './dto/create-workspace.dto';
+import { FindWorkspacesQueryDto } from './dto/find-workspaces-query.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
 import { UpdateWorkspaceDto } from './dto/update-workspace.dto';
+import { WorkspaceListResponseDto } from './dto/workspace-list-response.dto';
 import { WorkspaceMemberResponseDto } from './dto/workspace-member-response.dto';
 import { WorkspaceResponseDto } from './dto/workspace-response.dto';
 import { WorkspacesRepository } from './workspaces.repository';
@@ -36,9 +38,25 @@ export class WorkspacesService {
     return new WorkspaceResponseDto(workspace);
   }
 
-  async findAllForUser(userId: string): Promise<WorkspaceResponseDto[]> {
-    const workspaces = await this.workspacesRepository.findManyForUser(userId);
-    return workspaces.map((workspace) => new WorkspaceResponseDto(workspace));
+  async findAllForUser(
+    userId: string,
+    query: FindWorkspacesQueryDto,
+  ): Promise<WorkspaceListResponseDto> {
+    const skip = (query.page - 1) * query.limit;
+    const [workspaces, total] = await Promise.all([
+      this.workspacesRepository.findManyForUser(userId, {
+        skip,
+        take: query.limit,
+      }),
+      this.workspacesRepository.countForUser(userId),
+    ]);
+
+    return new WorkspaceListResponseDto(
+      workspaces.map((workspace) => new WorkspaceResponseDto(workspace)),
+      total,
+      query.page,
+      query.limit,
+    );
   }
 
   async findOne(id: string, userId: string): Promise<WorkspaceResponseDto> {

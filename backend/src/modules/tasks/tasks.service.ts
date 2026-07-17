@@ -6,6 +6,8 @@ import {
 } from '@nestjs/common';
 import { Task, WorkspaceMember, WorkspaceRole } from '@prisma/client';
 import { CreateTaskDto } from './dto/create-task.dto';
+import { FindTasksQueryDto } from './dto/find-tasks-query.dto';
+import { TaskListResponseDto } from './dto/task-list-response.dto';
 import { TaskResponseDto } from './dto/task-response.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { TasksRepository } from './tasks.repository';
@@ -18,6 +20,12 @@ const NOT_ALLOWED_MESSAGE =
   'Only the task creator or workspace owner can perform this action';
 const ASSIGNEE_NOT_A_MEMBER_MESSAGE =
   'The assignee must be a member of this workspace';
+const INVALID_CURSOR_MESSAGE = 'Invalid cursor';
+
+interface TaskCursor {
+  createdAt: string;
+  id: string;
+}
 
 @Injectable()
 export class TasksService {
@@ -54,13 +62,39 @@ export class TasksService {
     workspaceId: string,
     projectId: string,
     userId: string,
-  ): Promise<TaskResponseDto[]> {
+    query: FindTasksQueryDto,
+  ): Promise<TaskListResponseDto> {
     await this.getWorkspaceOrThrow(workspaceId);
     await this.getProjectOrThrow(workspaceId, projectId);
     await this.assertMember(workspaceId, userId);
 
-    const tasks = await this.tasksRepository.findManyForProject(projectId);
-    return tasks.map((task) => new TaskResponseDto(task));
+    const before = query.cursor ? this.decodeCursor(query.cursor) : undefined;
+
+    // Fetch one extra row as a peek: its presence is what tells us whether a
+    // next page exists, with no separate count query.
+    const rows = await this.tasksRepository.findManyForProject(projectId, {
+      status: query.status,
+      priority: query.priority,
+      assigneeId: query.assigneeId,
+      take: query.limit + 1,
+      before,
+    });
+
+    const hasMore = rows.length > query.limit;
+    const page = hasMore ? rows.slice(0, query.limit) : rows;
+    const lastRow = page[page.length - 1];
+    const nextCursor =
+      hasMore && lastRow
+        ? this.encodeCursor({
+            createdAt: lastRow.createdAt.toISOString(),
+            id: lastRow.id,
+          })
+        : null;
+
+    return new TaskListResponseDto(
+      page.map((task) => new TaskResponseDto(task)),
+      nextCursor,
+    );
   }
 
   async findOne(
@@ -87,13 +121,18 @@ export class TasksService {
     await this.getWorkspaceOrThrow(workspaceId);
     await this.getProjectOrThrow(workspaceId, projectId);
     await this.assertMember(workspaceId, userId);
-    await this.getTaskOrThrow(projectId, id);
+    const existingTask = await this.getTaskOrThrow(projectId, id);
 
     if (dto.assigneeId) {
       await this.assertAssigneeIsMember(workspaceId, dto.assigneeId);
     }
 
-    const task = await this.tasksRepository.update(id, dto);
+    const statusChange =
+      dto.status && dto.status !== existingTask.status
+        ? { userId, oldStatus: existingTask.status, newStatus: dto.status }
+        : undefined;
+
+    const task = await this.tasksRepository.update(id, dto, statusChange);
     return new TaskResponseDto(task);
   }
 
@@ -174,6 +213,27 @@ export class TasksService {
 
     if (!isCreator && !isOwner) {
       throw new ForbiddenException(NOT_ALLOWED_MESSAGE);
+    }
+  }
+
+  private encodeCursor(cursor: TaskCursor): string {
+    return Buffer.from(JSON.stringify(cursor), 'utf8').toString('base64url');
+  }
+
+  private decodeCursor(cursor: string): { createdAt: Date; id: string } {
+    try {
+      const parsed = JSON.parse(
+        Buffer.from(cursor, 'base64url').toString('utf8'),
+      ) as TaskCursor;
+      if (
+        typeof parsed.createdAt !== 'string' ||
+        typeof parsed.id !== 'string'
+      ) {
+        throw new Error(INVALID_CURSOR_MESSAGE);
+      }
+      return { createdAt: new Date(parsed.createdAt), id: parsed.id };
+    } catch {
+      throw new BadRequestException(INVALID_CURSOR_MESSAGE);
     }
   }
 }
