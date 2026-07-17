@@ -18,8 +18,8 @@ export function AppHeader() {
         </Link>
 
         <div className="flex items-center gap-4">
-          {user?.email && (
-            <span className="font-mono text-xs text-fog">{user.email}</span>
+          {user?.name && (
+            <span className="font-mono text-xs text-fog">{user.name}</span>
           )}
           <Button variant="nav" onClick={() => void logout()}>
             Log out

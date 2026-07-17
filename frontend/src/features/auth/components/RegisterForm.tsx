@@ -17,9 +17,9 @@ export function RegisterForm() {
     setError,
   } = useForm<RegisterFormValues>({ resolver: zodResolver(registerSchema) })
 
-  const onSubmit = async ({ email, password }: RegisterFormValues) => {
+  const onSubmit = async ({ name, email, password }: RegisterFormValues) => {
     try {
-      await registerMutation.mutateAsync({ email, password })
+      await registerMutation.mutateAsync({ name, email, password })
     } catch (error) {
       setError('root', {
         message: getErrorMessage(error, 'Could not create account.'),
@@ -32,6 +32,14 @@ export function RegisterForm() {
       <h1 className="font-display text-2xl font-medium text-ink">
         Create your account
       </h1>
+
+      <Input
+        id="name"
+        label="Name"
+        autoComplete="name"
+        error={errors.name?.message}
+        {...register('name')}
+      />
 
       <Input
         id="email"

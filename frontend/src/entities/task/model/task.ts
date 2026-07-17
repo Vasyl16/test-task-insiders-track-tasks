@@ -58,5 +58,6 @@ export interface TaskHistoryEntry {
   changedBy: {
     id: string
     email: string
+    name: string
   }
 }

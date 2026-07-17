@@ -40,7 +40,7 @@ export function CreateTaskForm({ workspaceId, projectId, onCreated }: CreateTask
   const { data: members } = useWorkspaceMembers(workspaceId)
   const assigneeOptions = [
     UNASSIGNED_OPTION,
-    ...(members?.map((member) => ({ value: member.user.id, label: member.user.email })) ?? []),
+    ...(members?.map((member) => ({ value: member.user.id, label: member.user.name })) ?? []),
   ]
   const {
     register,

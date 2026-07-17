@@ -11,7 +11,7 @@ interface TaskDetailModalProps {
   workspaceId: string
   projectId: string
   task: Task
-  assigneeEmail: string | null
+  assigneeName: string | null
   currentUserId: string | undefined
   isWorkspaceOwner: boolean
   onClose: () => void
@@ -24,7 +24,7 @@ export function TaskDetailModal({
   workspaceId,
   projectId,
   task,
-  assigneeEmail,
+  assigneeName,
   currentUserId,
   isWorkspaceOwner,
   onClose,
@@ -38,7 +38,7 @@ export function TaskDetailModal({
           )}
           <p className="mt-2 font-mono text-xs tracking-wide text-ink/50 uppercase">
             {TASK_STATUS_LABELS[task.status]} · {TASK_PRIORITY_LABELS[task.priority]} ·{' '}
-            {assigneeEmail ?? 'Unassigned'}
+            {assigneeName ?? 'Unassigned'}
           </p>
         </div>
 
@@ -107,7 +107,7 @@ function StatusHistorySection({ workspaceId, projectId, taskId }: StatusHistoryS
           !isError &&
           history?.map((entry) => (
             <p key={entry.id} className="font-mono text-xs text-ink/50">
-              <span className="text-brass-deep">{entry.changedBy.email}</span> changed status
+              <span className="text-brass-deep">{entry.changedBy.name}</span> changed status
               from <span className="text-ink">{TASK_STATUS_LABELS[entry.oldStatus]}</span> to{' '}
               <span className="text-ink">{TASK_STATUS_LABELS[entry.newStatus]}</span>
               {' — '}

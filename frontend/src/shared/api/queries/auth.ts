@@ -7,6 +7,10 @@ export interface AuthCredentials {
   password: string
 }
 
+export interface RegisterCredentials extends AuthCredentials {
+  name: string
+}
+
 export interface AuthTokens {
   accessToken: string
   refreshToken: string
@@ -27,7 +31,7 @@ export async function login(credentials: AuthCredentials): Promise<AuthTokens> {
 }
 
 export async function register(
-  credentials: AuthCredentials,
+  credentials: RegisterCredentials,
 ): Promise<RegisterResult> {
   const response = await api.post<RegisterResult>('/auth/register', credentials)
   return response.data

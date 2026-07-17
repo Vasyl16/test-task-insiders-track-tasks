@@ -5,6 +5,7 @@ import {
   logoutRequest,
   register,
   type AuthCredentials,
+  type RegisterCredentials,
 } from '../queries/auth'
 import { tokenManager } from '../axios/token-manager'
 import { queryKeys } from '../queryKeys'
@@ -60,7 +61,7 @@ export function useRegister() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (credentials: AuthCredentials): Promise<User> => {
+    mutationFn: async (credentials: RegisterCredentials): Promise<User> => {
       const result = await register(credentials)
       tokenManager.setTokens(result.accessToken, result.refreshToken)
       return result.user

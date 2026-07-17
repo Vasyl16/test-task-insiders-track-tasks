@@ -8,5 +8,6 @@ export interface WorkspaceMember {
   user: {
     id: string
     email: string
+    name: string
   }
 }

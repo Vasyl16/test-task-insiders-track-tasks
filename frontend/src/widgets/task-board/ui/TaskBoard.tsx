@@ -42,7 +42,7 @@ export function TaskBoard({ workspaceId, projectId, members, currentUserId, isWo
   // values — no parallel state to keep in sync with the library's.
   const [activeTask, setActiveTask] = useState<Task | null>(null);
 
-  const memberEmailById = new Map(members?.map((member) => [member.user.id, member.user.email]));
+  const memberNameById = new Map(members?.map((member) => [member.user.id, member.user.name]));
 
   const sensors = useSensors(
     // A small movement threshold before a drag "activates" — without it, a
@@ -52,7 +52,7 @@ export function TaskBoard({ workspaceId, projectId, members, currentUserId, isWo
     useSensor(KeyboardSensor),
   );
 
-  const resolveAssigneeEmail = (task: Task) => (task.assigneeId ? (memberEmailById.get(task.assigneeId) ?? "Unknown") : null);
+  const resolveAssigneeName = (task: Task) => (task.assigneeId ? (memberNameById.get(task.assigneeId) ?? "Unknown") : null);
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveTask((event.active.data.current as DraggableData | undefined)?.task ?? null);
@@ -89,7 +89,7 @@ export function TaskBoard({ workspaceId, projectId, members, currentUserId, isWo
             status={status}
             currentUserId={currentUserId}
             isWorkspaceOwner={isWorkspaceOwner}
-            resolveAssigneeEmail={resolveAssigneeEmail}
+            resolveAssigneeName={resolveAssigneeName}
             onOpen={setSelectedTask}
             onEdit={setEditingTask}
             onRemove={(id) => void deleteTask.mutateAsync(id)}
@@ -102,7 +102,7 @@ export function TaskBoard({ workspaceId, projectId, members, currentUserId, isWo
           <div className={`rounded-xl border-t-4 bg-paper p-2.5 shadow-xl shadow-black/30 ${TASK_PRIORITY_BORDER_CLASSES[activeTask.priority]}`}>
             <TaskCardContent
               task={activeTask}
-              assigneeEmail={resolveAssigneeEmail(activeTask)}
+              assigneeName={resolveAssigneeName(activeTask)}
             />
           </div>
         )}
@@ -113,7 +113,7 @@ export function TaskBoard({ workspaceId, projectId, members, currentUserId, isWo
           workspaceId={workspaceId}
           projectId={projectId}
           task={selectedTask}
-          assigneeEmail={resolveAssigneeEmail(selectedTask)}
+          assigneeName={resolveAssigneeName(selectedTask)}
           currentUserId={currentUserId}
           isWorkspaceOwner={isWorkspaceOwner}
           onClose={() => setSelectedTask(null)}
@@ -141,7 +141,7 @@ interface TaskColumnProps {
   status: TaskStatus;
   currentUserId: string | undefined;
   isWorkspaceOwner: boolean;
-  resolveAssigneeEmail: (task: Task) => string | null;
+  resolveAssigneeName: (task: Task) => string | null;
   onOpen: (task: Task) => void;
   onEdit: (task: Task) => void;
   onRemove: (id: string) => void;
@@ -153,7 +153,7 @@ interface TaskColumnProps {
 // just this one Tailwind arbitrary-value class — bump/shrink it here only.
 const COLUMN_SCROLL_CLASS = "max-h-[60vh] overflow-y-auto";
 
-function TaskColumn({ workspaceId, projectId, status, currentUserId, isWorkspaceOwner, resolveAssigneeEmail, onOpen, onEdit, onRemove }: TaskColumnProps) {
+function TaskColumn({ workspaceId, projectId, status, currentUserId, isWorkspaceOwner, resolveAssigneeName, onOpen, onEdit, onRemove }: TaskColumnProps) {
   // The droppable id *is* the destination status — handleDragEnd reads
   // `over.id` straight back as a TaskStatus, no separate lookup table.
   const { setNodeRef: setDroppableRef, isOver } = useDroppable({ id: status });
@@ -241,7 +241,7 @@ function TaskColumn({ workspaceId, projectId, status, currentUserId, isWorkspace
             <TaskCard
               key={task.id}
               task={task}
-              assigneeEmail={resolveAssigneeEmail(task)}
+              assigneeName={resolveAssigneeName(task)}
               canManage={canManage}
               onOpen={() => onOpen(task)}
               onEdit={() => onEdit(task)}
@@ -294,14 +294,14 @@ function TaskCardSkeleton() {
 
 interface TaskCardProps {
   task: Task;
-  assigneeEmail: string | null;
+  assigneeName: string | null;
   canManage: boolean;
   onOpen: () => void;
   onEdit: () => void;
   onRemove: () => void;
 }
 
-function TaskCard({ task, assigneeEmail, canManage, onOpen, onEdit, onRemove }: TaskCardProps) {
+function TaskCard({ task, assigneeName, canManage, onOpen, onEdit, onRemove }: TaskCardProps) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: task.id,
     data: { task } as DraggableData,
@@ -320,7 +320,7 @@ function TaskCard({ task, assigneeEmail, canManage, onOpen, onEdit, onRemove }: 
     >
       <TaskCardContent
         task={task}
-        assigneeEmail={assigneeEmail}
+        assigneeName={assigneeName}
       />
 
       <div className="flex items-center justify-end gap-3 pt-0.5">
@@ -357,12 +357,12 @@ function TaskCard({ task, assigneeEmail, canManage, onOpen, onEdit, onRemove }: 
 
 interface TaskCardContentProps {
   task: Task;
-  assigneeEmail: string | null;
+  assigneeName: string | null;
 }
 
 // Shared between the in-column TaskCard and the DragOverlay's floating clone
 // so the two visuals can't drift apart.
-function TaskCardContent({ task, assigneeEmail }: TaskCardContentProps) {
+function TaskCardContent({ task, assigneeName }: TaskCardContentProps) {
   return (
     <>
       <p className={`font-display text-base leading-snug text-ink ${task.status === "DONE" ? "line-through opacity-50" : ""}`}>{task.title}</p>
@@ -370,7 +370,7 @@ function TaskCardContent({ task, assigneeEmail }: TaskCardContentProps) {
       {task.description && <p className="truncate text-xs text-ink/60">{task.description}</p>}
 
       <p className="font-mono text-[11px] text-ink/40">
-        {TASK_PRIORITY_LABELS[task.priority]} · {assigneeEmail ?? "Unassigned"}
+        {TASK_PRIORITY_LABELS[task.priority]} · {assigneeName ?? "Unassigned"}
       </p>
     </>
   );

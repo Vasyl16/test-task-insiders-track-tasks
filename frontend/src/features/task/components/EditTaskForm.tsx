@@ -48,7 +48,7 @@ export function EditTaskForm({
   const updateTask = useUpdateTask(workspaceId, projectId)
   const assigneeOptions = [
     UNASSIGNED_OPTION,
-    ...(members?.map((member) => ({ value: member.user.id, label: member.user.email })) ?? []),
+    ...(members?.map((member) => ({ value: member.user.id, label: member.user.name })) ?? []),
   ]
   const {
     register,

@@ -190,7 +190,7 @@ function CommentItem({
     <div className="rounded-lg bg-ink/5 p-3">
       <div className="flex items-baseline justify-between gap-3">
         <p className="font-mono text-[11px] text-ink/50">
-          {comment.author.email} · {formatTimestamp(comment.createdAt)}
+          {comment.author.name} · {formatTimestamp(comment.createdAt)}
           {comment.createdAt !== comment.updatedAt && ' (edited)'}
         </p>
         {canManage && (

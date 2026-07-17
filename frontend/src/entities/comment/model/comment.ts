@@ -7,5 +7,6 @@ export interface Comment {
   author: {
     id: string
     email: string
+    name: string
   }
 }
