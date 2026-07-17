@@ -1,6 +1,6 @@
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { TaskStatus } from "../../../entities/task/model/task";
-import { createTask, deleteTask, getTask, getTasksPage, updateTask, type TaskPayload } from "../queries/task";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
+import { taskStatusValues, type Task, type TaskStatus } from "../../../entities/task/model/task";
+import { createTask, deleteTask, getTask, getTasksPage, updateTask, type TaskPage, type TaskPayload } from "../queries/task";
 import { queryKeys } from "../queryKeys";
 
 // Matches the backend's default page size (@Min(1) @Max(100), default 20) —
@@ -52,6 +52,55 @@ export function useUpdateTask(workspaceId: string, projectId: string) {
     mutationFn: (vars: { id: string } & Partial<TaskPayload>) => {
       const { id, ...payload } = vars;
       return updateTask(workspaceId, projectId, id, payload);
+    },
+    // Only status changes move a task between Kanban columns, so that's the
+    // only case worth an optimistic patch here — a title/priority/assignee-only
+    // edit doesn't change which column list a task belongs to.
+    onMutate: async (vars) => {
+      if (vars.status === undefined) {
+        return undefined;
+      }
+
+      const listKeys = taskStatusValues.map((status) => queryKeys.tasks.list(workspaceId, projectId, status));
+      await Promise.all(listKeys.map((key) => queryClient.cancelQueries({ queryKey: key })));
+
+      const previousLists = listKeys.map((key) => [key, queryClient.getQueryData<InfiniteData<TaskPage>>(key)] as const);
+
+      let movedTask: Task | undefined;
+      for (const key of listKeys) {
+        queryClient.setQueryData<InfiniteData<TaskPage>>(key, (old) => {
+          if (!old) return old;
+          let foundInThisList: Task | undefined;
+          const pages = old.pages.map((page) => {
+            const match = page.items.find((item) => item.id === vars.id);
+            if (!match) return page;
+            foundInThisList = match;
+            return { ...page, items: page.items.filter((item) => item.id !== vars.id) };
+          });
+          if (foundInThisList) {
+            movedTask = foundInThisList;
+            return { ...old, pages };
+          }
+          return old;
+        });
+      }
+
+      if (movedTask) {
+        const destinationKey = queryKeys.tasks.list(workspaceId, projectId, vars.status);
+        const updatedTask = { ...movedTask, status: vars.status };
+        queryClient.setQueryData<InfiniteData<TaskPage>>(destinationKey, (old) => {
+          if (!old || old.pages.length === 0) return old;
+          const [firstPage, ...rest] = old.pages;
+          return { ...old, pages: [{ ...firstPage, items: [updatedTask, ...firstPage.items] }, ...rest] };
+        });
+      }
+
+      return { previousLists };
+    },
+    onError: (_error, _vars, context) => {
+      context?.previousLists.forEach(([key, data]) => {
+        queryClient.setQueryData(key, data);
+      });
     },
     onSuccess: (task, vars) => {
       queryClient.setQueryData(queryKeys.tasks.detail(workspaceId, projectId, vars.id), task);

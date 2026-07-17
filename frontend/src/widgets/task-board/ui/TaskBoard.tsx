@@ -97,7 +97,11 @@ export function TaskBoard({ workspaceId, projectId, members, currentUserId, isWo
         ))}
       </div>
 
-      <DragOverlay>
+      {/* Default DragOverlay behavior animates the clone back to its origin
+          before removing it — now that the card itself moves instantly via
+          the optimistic update, that boomerang-back read as a glitch, so it's
+          disabled: the clone just disappears at the drop point. */}
+      <DragOverlay dropAnimation={null}>
         {activeTask && (
           <div className={`rounded-xl border-t-4 bg-paper p-2.5 shadow-xl shadow-black/30 ${TASK_PRIORITY_BORDER_CLASSES[activeTask.priority]}`}>
             <TaskCardContent
