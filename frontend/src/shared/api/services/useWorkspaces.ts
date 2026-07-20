@@ -6,14 +6,15 @@ import {
   getWorkspaceMembers,
   getWorkspacesPage,
   updateWorkspace,
+  type WorkspaceListParams,
   type WorkspacePayload,
 } from '../queries/workspace'
 import { queryKeys } from '../queryKeys'
 
-export function useWorkspacesPage(page: number, limit: number) {
+export function useWorkspacesPage(params: WorkspaceListParams) {
   return useQuery({
-    queryKey: queryKeys.workspaces.list(page, limit),
-    queryFn: () => getWorkspacesPage({ page, limit }),
+    queryKey: queryKeys.workspaces.list(params),
+    queryFn: () => getWorkspacesPage(params),
     placeholderData: keepPreviousData,
   })
 }

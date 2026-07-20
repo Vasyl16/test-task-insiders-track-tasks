@@ -2,9 +2,12 @@ import { useState } from "react";
 import { Link } from "react-router";
 import { CreateWorkspaceForm } from "../../features/workspace/components/CreateWorkspaceForm";
 import { useWorkspacesPage } from "../../shared/api/services/useWorkspaces";
+import { useDebouncedValue } from "../../shared/hooks/useDebouncedValue";
 import { getErrorMessage } from "../../shared/lib/getErrorMessage";
+import { sortValueToParams } from "../../shared/lib/sortValueToParams";
 import { Button } from "../../shared/ui/Button";
 import { ErrorState } from "../../shared/ui/ErrorState";
+import { ListFilterBar, type ListSortValue, type OwnershipValue } from "../../shared/ui/ListFilterBar";
 import { Modal } from "../../shared/ui/Modal";
 import { Skeleton } from "../../shared/ui/Skeleton";
 import { Spinner } from "../../shared/ui/Spinner";
@@ -13,6 +16,25 @@ const WORKSPACES_PAGE_SIZE = 6;
 
 export function DashboardPage() {
   const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search);
+  const [sort, setSort] = useState<ListSortValue>("createdAt-desc");
+  const [ownership, setOwnership] = useState<OwnershipValue>("all");
+
+  // Any filter change makes the current page number meaningless against the
+  // new result set — reset it during render (not an effect) the same way
+  // WorkspacePage resets its own page state on a workspaceId change.
+  const [appliedForFilters, setAppliedForFilters] = useState({ search: debouncedSearch, sort, ownership });
+  if (
+    appliedForFilters.search !== debouncedSearch ||
+    appliedForFilters.sort !== sort ||
+    appliedForFilters.ownership !== ownership
+  ) {
+    setAppliedForFilters({ search: debouncedSearch, sort, ownership });
+    setPage(1);
+  }
+
+  const { sortBy, sortOrder } = sortValueToParams(sort);
   const {
     data: workspacesPage,
     isLoading,
@@ -20,7 +42,14 @@ export function DashboardPage() {
     isError,
     error,
     refetch,
-  } = useWorkspacesPage(page, WORKSPACES_PAGE_SIZE);
+  } = useWorkspacesPage({
+    page,
+    limit: WORKSPACES_PAGE_SIZE,
+    search: debouncedSearch || undefined,
+    sortBy,
+    sortOrder,
+    ownership,
+  });
   const workspaces = workspacesPage?.items;
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
@@ -43,6 +72,19 @@ export function DashboardPage() {
         </div>
         <Button onClick={() => setIsCreateOpen(true)}>New workspace</Button>
       </div>
+
+      <ListFilterBar
+        idPrefix="dashboard"
+        searchLabel="Search workspaces"
+        searchPlaceholder="Search by name…"
+        search={search}
+        onSearchChange={setSearch}
+        sort={sort}
+        onSortChange={setSort}
+        ownership={ownership}
+        onOwnershipChange={setOwnership}
+        ownershipOtherLabel="Shared with me"
+      />
 
       {(isLoading || isFetching) && (
         <ul className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2">
@@ -67,8 +109,14 @@ export function DashboardPage() {
 
       {!isLoading && !isFetching && !isError && workspaces?.length === 0 && (
         <div className="mt-10 rounded-2xl border border-dashed border-brass/30 p-10 text-center">
-          <p className="font-display text-lg text-paper">No workspaces yet</p>
-          <p className="mt-1 text-sm text-fog">Open one to start logging projects against it.</p>
+          <p className="font-display text-lg text-paper">
+            {debouncedSearch || ownership !== "all" ? "No workspaces match" : "No workspaces yet"}
+          </p>
+          <p className="mt-1 text-sm text-fog">
+            {debouncedSearch || ownership !== "all"
+              ? "Try a different search or filter."
+              : "Open one to start logging projects against it."}
+          </p>
         </div>
       )}
 

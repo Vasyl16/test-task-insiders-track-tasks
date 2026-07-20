@@ -21,9 +21,22 @@ export interface ProjectPage {
   totalPages: number
 }
 
+export type ProjectSortBy = 'name' | 'createdAt'
+export type SortOrder = 'asc' | 'desc'
+export type OwnershipFilter = 'all' | 'mine' | 'other'
+
+export interface ProjectListParams {
+  page: number
+  limit: number
+  search?: string
+  sortBy?: ProjectSortBy
+  sortOrder?: SortOrder
+  ownership?: OwnershipFilter
+}
+
 export async function getProjectsPage(
   workspaceId: string,
-  params: { page: number; limit: number },
+  params: ProjectListParams,
 ): Promise<ProjectPage> {
   const response = await api.get<ProjectPage>(`/workspaces/${workspaceId}/projects`, { params })
   return response.data

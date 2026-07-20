@@ -7,9 +7,12 @@ import { EditWorkspaceForm } from '../../features/workspace/components/EditWorks
 import { useAuth } from '../../shared/api/services/useAuth'
 import { useDeleteProject, useProjectsPage } from '../../shared/api/services/useProjects'
 import { useDeleteWorkspace, useWorkspace } from '../../shared/api/services/useWorkspaces'
+import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue'
 import { getErrorMessage, isNotFoundOrForbidden } from '../../shared/lib/getErrorMessage'
+import { sortValueToParams } from '../../shared/lib/sortValueToParams'
 import { Button } from '../../shared/ui/Button'
 import { ErrorState } from '../../shared/ui/ErrorState'
+import { ListFilterBar, type ListSortValue, type OwnershipValue } from '../../shared/ui/ListFilterBar'
 import { Modal } from '../../shared/ui/Modal'
 import { Skeleton } from '../../shared/ui/Skeleton'
 import { Spinner } from '../../shared/ui/Spinner'
@@ -30,6 +33,10 @@ export function WorkspacePage() {
   } = useWorkspace(workspaceId)
 
   const [page, setPage] = useState(1)
+  const [search, setSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search)
+  const [sort, setSort] = useState<ListSortValue>('createdAt-desc')
+  const [ownership, setOwnership] = useState<OwnershipValue>('all')
   // data (and with it, totalPages) goes undefined the moment a fetch
   // errors — even with placeholderData, which only bridges the *fetching*
   // gap, not a settled failure. Without remembering the last known page
@@ -45,8 +52,25 @@ export function WorkspacePage() {
     setRenderedForWorkspaceId(workspaceId)
     setPage(1)
     setLastKnownTotalPages(null)
+    setSearch('')
+    setSort('createdAt-desc')
+    setOwnership('all')
   }
 
+  // Same "reset page during render, not in an effect" pattern as above,
+  // applied to filter changes — a new search/sort/ownership combination
+  // makes the current page number meaningless against the new result set.
+  const [appliedForFilters, setAppliedForFilters] = useState({ search: debouncedSearch, sort, ownership })
+  if (
+    appliedForFilters.search !== debouncedSearch ||
+    appliedForFilters.sort !== sort ||
+    appliedForFilters.ownership !== ownership
+  ) {
+    setAppliedForFilters({ search: debouncedSearch, sort, ownership })
+    setPage(1)
+  }
+
+  const { sortBy, sortOrder } = sortValueToParams(sort)
   const {
     data: projectsPage,
     isLoading: isProjectsLoading,
@@ -54,7 +78,14 @@ export function WorkspacePage() {
     isError: isProjectsError,
     error: projectsError,
     refetch: refetchProjects,
-  } = useProjectsPage(workspaceId, page, PROJECTS_PAGE_SIZE)
+  } = useProjectsPage(workspaceId, {
+    page,
+    limit: PROJECTS_PAGE_SIZE,
+    search: debouncedSearch || undefined,
+    sortBy,
+    sortOrder,
+    ownership,
+  })
   const projects = projectsPage?.items
   if (projectsPage && projectsPage.totalPages !== lastKnownTotalPages) {
     setLastKnownTotalPages(projectsPage.totalPages)
@@ -159,6 +190,19 @@ export function WorkspacePage() {
         <Button onClick={() => setIsCreateProjectOpen(true)}>New project</Button>
       </div>
 
+      <ListFilterBar
+        idPrefix="workspace-projects"
+        searchLabel="Search projects"
+        searchPlaceholder="Search by name…"
+        search={search}
+        onSearchChange={setSearch}
+        sort={sort}
+        onSortChange={setSort}
+        ownership={ownership}
+        onOwnershipChange={setOwnership}
+        ownershipOtherLabel="Created by others"
+      />
+
       {(isProjectsLoading || isProjectsFetching) && (
         <ul className="mt-4 divide-y divide-brass/15 rounded-2xl bg-paper shadow-lg shadow-black/20">
           {Array.from({ length: PROJECTS_PAGE_SIZE }, (_, index) => (
@@ -182,8 +226,14 @@ export function WorkspacePage() {
 
       {!isProjectsLoading && !isProjectsFetching && !isProjectsError && projects?.length === 0 && (
         <div className="mt-4 rounded-2xl border border-dashed border-brass/30 p-10 text-center">
-          <p className="font-display text-lg text-paper">No projects yet</p>
-          <p className="mt-1 text-sm text-fog">Log the first one for this workspace.</p>
+          <p className="font-display text-lg text-paper">
+            {debouncedSearch || ownership !== 'all' ? 'No projects match' : 'No projects yet'}
+          </p>
+          <p className="mt-1 text-sm text-fog">
+            {debouncedSearch || ownership !== 'all'
+              ? 'Try a different search or filter.'
+              : 'Log the first one for this workspace.'}
+          </p>
         </div>
       )}
 

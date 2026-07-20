@@ -7,6 +7,7 @@ import { TASK_PRIORITY_BORDER_CLASSES, TASK_PRIORITY_LABELS, TASK_STATUS_LABELS,
 import type { Task, TaskStatus } from "../../../entities/task/model/task";
 import type { WorkspaceMember } from "../../../entities/workspace/model/workspace-member";
 import { useDeleteTask, useTasksByStatus, useUpdateTask } from "../../../shared/api/services/useTasks";
+import type { TaskListFilters } from "../../../shared/api/queryKeys";
 import { getErrorMessage } from "../../../shared/lib/getErrorMessage";
 import { Modal } from "../../../shared/ui/Modal";
 import { Skeleton } from "../../../shared/ui/Skeleton";
@@ -18,6 +19,7 @@ interface TaskBoardProps {
   members: WorkspaceMember[] | undefined;
   currentUserId: string | undefined;
   isWorkspaceOwner: boolean;
+  filters: TaskListFilters;
 }
 
 // Cards carry their own Task via useDraggable's `data`, so the drag handlers
@@ -27,8 +29,8 @@ interface DraggableData {
   task: Task;
 }
 
-export function TaskBoard({ workspaceId, projectId, members, currentUserId, isWorkspaceOwner }: TaskBoardProps) {
-  const updateTask = useUpdateTask(workspaceId, projectId);
+export function TaskBoard({ workspaceId, projectId, members, currentUserId, isWorkspaceOwner, filters }: TaskBoardProps) {
+  const updateTask = useUpdateTask(workspaceId, projectId, filters);
   const deleteTask = useDeleteTask(workspaceId, projectId);
   // selectedTask: read-only detail (fields + status history + comments),
   // opened by clicking the card body. editingTask: the actual edit form, in
@@ -90,6 +92,7 @@ export function TaskBoard({ workspaceId, projectId, members, currentUserId, isWo
             currentUserId={currentUserId}
             isWorkspaceOwner={isWorkspaceOwner}
             resolveAssigneeName={resolveAssigneeName}
+            filters={filters}
             onOpen={setSelectedTask}
             onEdit={setEditingTask}
             onRemove={(id) => void deleteTask.mutateAsync(id)}
@@ -146,6 +149,7 @@ interface TaskColumnProps {
   currentUserId: string | undefined;
   isWorkspaceOwner: boolean;
   resolveAssigneeName: (task: Task) => string | null;
+  filters: TaskListFilters;
   onOpen: (task: Task) => void;
   onEdit: (task: Task) => void;
   onRemove: (id: string) => void;
@@ -157,7 +161,7 @@ interface TaskColumnProps {
 // just this one Tailwind arbitrary-value class — bump/shrink it here only.
 const COLUMN_SCROLL_CLASS = "max-h-[60vh] overflow-y-auto";
 
-function TaskColumn({ workspaceId, projectId, status, currentUserId, isWorkspaceOwner, resolveAssigneeName, onOpen, onEdit, onRemove }: TaskColumnProps) {
+function TaskColumn({ workspaceId, projectId, status, currentUserId, isWorkspaceOwner, resolveAssigneeName, filters, onOpen, onEdit, onRemove }: TaskColumnProps) {
   // The droppable id *is* the destination status — handleDragEnd reads
   // `over.id` straight back as a TaskStatus, no separate lookup table.
   const { setNodeRef: setDroppableRef, isOver } = useDroppable({ id: status });
@@ -171,7 +175,7 @@ function TaskColumn({ workspaceId, projectId, status, currentUserId, isWorkspace
     error,
     isFetchNextPageError,
     refetch,
-  } = useTasksByStatus(workspaceId, projectId, status);
+  } = useTasksByStatus(workspaceId, projectId, status, filters);
 
   const tasks = data?.pages.flatMap((page) => page.items) ?? [];
 
@@ -235,7 +239,9 @@ function TaskColumn({ workspaceId, projectId, status, currentUserId, isWorkspace
         )}
 
         {!isLoading && !isError && tasks.length === 0 && (
-          <p className="px-2 py-6 text-center font-mono text-xs text-fog">Drop tasks here</p>
+          <p className="px-2 py-6 text-center font-mono text-xs text-fog">
+            {filters.search || filters.priority || filters.assigneeId ? "No matches" : "Drop tasks here"}
+          </p>
         )}
 
         {tasks.map((task) => {

@@ -10,6 +10,7 @@ export interface TasksPageParams {
   status?: TaskStatus
   priority?: TaskPriority
   assigneeId?: string
+  search?: string
   cursor?: string
   limit?: number
 }

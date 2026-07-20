@@ -1,11 +1,11 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createProject, deleteProject, getProject, getProjectsPage, updateProject, type ProjectPayload } from "../queries/project";
+import { createProject, deleteProject, getProject, getProjectsPage, updateProject, type ProjectListParams, type ProjectPayload } from "../queries/project";
 import { queryKeys } from "../queryKeys";
 
-export function useProjectsPage(workspaceId: string, page: number, limit: number) {
+export function useProjectsPage(workspaceId: string, params: ProjectListParams) {
   return useQuery({
-    queryKey: queryKeys.projects.list(workspaceId, page, limit),
-    queryFn: () => getProjectsPage(workspaceId, { page, limit }),
+    queryKey: queryKeys.projects.list(workspaceId, params),
+    queryFn: () => getProjectsPage(workspaceId, params),
     enabled: Boolean(workspaceId),
     // Keep the previous page's rows on screen while the next page loads,
     // instead of flashing a loading state on every Next/Previous click.

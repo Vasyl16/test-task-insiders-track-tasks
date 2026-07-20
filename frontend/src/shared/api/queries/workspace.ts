@@ -22,10 +22,20 @@ export interface WorkspacePage {
   totalPages: number
 }
 
-export async function getWorkspacesPage(params: {
+export type WorkspaceSortBy = 'name' | 'createdAt'
+export type SortOrder = 'asc' | 'desc'
+export type OwnershipFilter = 'all' | 'mine' | 'other'
+
+export interface WorkspaceListParams {
   page: number
   limit: number
-}): Promise<WorkspacePage> {
+  search?: string
+  sortBy?: WorkspaceSortBy
+  sortOrder?: SortOrder
+  ownership?: OwnershipFilter
+}
+
+export async function getWorkspacesPage(params: WorkspaceListParams): Promise<WorkspacePage> {
   const response = await api.get<WorkspacePage>('/workspaces', { params })
   return response.data
 }

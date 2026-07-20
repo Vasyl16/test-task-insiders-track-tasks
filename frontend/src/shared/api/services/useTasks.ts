@@ -1,20 +1,26 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { taskStatusValues, type Task, type TaskStatus } from "../../../entities/task/model/task";
 import { createTask, deleteTask, getTask, getTasksPage, updateTask, type TaskPage, type TaskPayload } from "../queries/task";
-import { queryKeys } from "../queryKeys";
+import { queryKeys, type TaskListFilters } from "../queryKeys";
 
 // Matches the backend's default page size (@Min(1) @Max(100), default 20) —
 // each Kanban column lazy-loads its own status in pages of this size.
 const TASKS_PAGE_SIZE = 10;
 
-export function useTasksByStatus(workspaceId: string, projectId: string, status: TaskStatus) {
+export function useTasksByStatus(
+  workspaceId: string,
+  projectId: string,
+  status: TaskStatus,
+  filters: TaskListFilters = {},
+) {
   return useInfiniteQuery({
-    queryKey: queryKeys.tasks.list(workspaceId, projectId, status),
+    queryKey: queryKeys.tasks.list(workspaceId, projectId, status, filters),
     queryFn: ({ pageParam }) =>
       getTasksPage(workspaceId, projectId, {
         status,
         cursor: pageParam,
         limit: TASKS_PAGE_SIZE,
+        ...filters,
       }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
@@ -45,7 +51,12 @@ export function useCreateTask(workspaceId: string, projectId: string) {
 
 // Takes `id` per-call (like useDeleteTask) rather than at hook-creation time,
 // so one hook instance can update any row in a list without a hook-per-row.
-export function useUpdateTask(workspaceId: string, projectId: string) {
+// `filters` should be the board's *currently active* filters (search/priority/
+// assignee), since that's what all three status columns are keyed on right
+// now — passing the wrong ones just means the optimistic patch below finds no
+// matching cache entry and silently no-ops; the reconciling invalidation in
+// onSuccess still corrects the real state regardless.
+export function useUpdateTask(workspaceId: string, projectId: string, filters: TaskListFilters = {}) {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -61,7 +72,7 @@ export function useUpdateTask(workspaceId: string, projectId: string) {
         return undefined;
       }
 
-      const listKeys = taskStatusValues.map((status) => queryKeys.tasks.list(workspaceId, projectId, status));
+      const listKeys = taskStatusValues.map((status) => queryKeys.tasks.list(workspaceId, projectId, status, filters));
       await Promise.all(listKeys.map((key) => queryClient.cancelQueries({ queryKey: key })));
 
       const previousLists = listKeys.map((key) => [key, queryClient.getQueryData<InfiniteData<TaskPage>>(key)] as const);
@@ -86,7 +97,7 @@ export function useUpdateTask(workspaceId: string, projectId: string) {
       }
 
       if (movedTask) {
-        const destinationKey = queryKeys.tasks.list(workspaceId, projectId, vars.status);
+        const destinationKey = queryKeys.tasks.list(workspaceId, projectId, vars.status, filters);
         const updatedTask = { ...movedTask, status: vars.status };
         queryClient.setQueryData<InfiniteData<TaskPage>>(destinationKey, (old) => {
           if (!old || old.pages.length === 0) return old;
