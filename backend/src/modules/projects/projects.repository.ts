@@ -1,6 +1,16 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma, Project, Workspace, WorkspaceMember } from '@prisma/client';
 import { PrismaService } from '@prisma/prisma.service';
-import { Project, Workspace, WorkspaceMember } from '@prisma/client';
+import {
+  OwnershipFilter,
+  ProjectSortBy,
+  SortOrder,
+} from './dto/find-projects-query.dto';
+
+export interface ProjectListFilters {
+  search?: string;
+  ownership: OwnershipFilter;
+}
 
 @Injectable()
 export class ProjectsRepository {
@@ -34,18 +44,45 @@ export class ProjectsRepository {
 
   findManyForWorkspace(
     workspaceId: string,
-    params: { skip: number; take: number },
+    userId: string,
+    params: {
+      skip: number;
+      take: number;
+      sortBy: ProjectSortBy;
+      sortOrder: SortOrder;
+    } & ProjectListFilters,
   ): Promise<Project[]> {
     return this.prisma.project.findMany({
-      where: { workspaceId },
-      orderBy: { createdAt: 'desc' },
+      where: this.buildWhereForWorkspace(workspaceId, userId, params),
+      orderBy: { [params.sortBy]: params.sortOrder },
       skip: params.skip,
       take: params.take,
     });
   }
 
-  countForWorkspace(workspaceId: string): Promise<number> {
-    return this.prisma.project.count({ where: { workspaceId } });
+  countForWorkspace(
+    workspaceId: string,
+    userId: string,
+    filters: ProjectListFilters,
+  ): Promise<number> {
+    return this.prisma.project.count({
+      where: this.buildWhereForWorkspace(workspaceId, userId, filters),
+    });
+  }
+
+  private buildWhereForWorkspace(
+    workspaceId: string,
+    userId: string,
+    filters: ProjectListFilters,
+  ): Prisma.ProjectWhereInput {
+    return {
+      workspaceId,
+      ...(filters.search && {
+        name: { contains: filters.search, mode: 'insensitive' },
+      }),
+      ...(filters.ownership === 'mine' && { createdBy: userId }),
+      ...(filters.ownership === 'other' && { createdBy: { not: userId } }),
+    };
   }
 
   update(

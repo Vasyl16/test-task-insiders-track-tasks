@@ -48,12 +48,16 @@ export class ProjectsService {
     await this.assertMember(workspaceId, userId);
 
     const skip = (query.page - 1) * query.limit;
+    const filters = { search: query.search, ownership: query.ownership };
     const [projects, total] = await Promise.all([
-      this.projectsRepository.findManyForWorkspace(workspaceId, {
+      this.projectsRepository.findManyForWorkspace(workspaceId, userId, {
         skip,
         take: query.limit,
+        sortBy: query.sortBy,
+        sortOrder: query.sortOrder,
+        ...filters,
       }),
-      this.projectsRepository.countForWorkspace(workspaceId),
+      this.projectsRepository.countForWorkspace(workspaceId, userId, filters),
     ]);
 
     return new ProjectListResponseDto(

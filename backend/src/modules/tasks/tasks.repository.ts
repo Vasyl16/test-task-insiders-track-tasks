@@ -52,6 +52,7 @@ export class TasksRepository {
       status?: TaskStatus;
       priority?: TaskPriority;
       assigneeId?: string;
+      search?: string;
       take: number;
       before?: { createdAt: Date; id: string };
     },
@@ -62,6 +63,9 @@ export class TasksRepository {
         status: params.status,
         priority: params.priority,
         assigneeId: params.assigneeId,
+        ...(params.search && {
+          title: { contains: params.search, mode: 'insensitive' },
+        }),
         // Keyset pagination: everything strictly "before" the cursor row in
         // (createdAt DESC, id DESC) order. The id tiebreak is what makes the
         // sort — and therefore the cursor — deterministic when two tasks

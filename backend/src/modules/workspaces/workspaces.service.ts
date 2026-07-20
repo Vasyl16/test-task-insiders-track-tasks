@@ -43,12 +43,16 @@ export class WorkspacesService {
     query: FindWorkspacesQueryDto,
   ): Promise<WorkspaceListResponseDto> {
     const skip = (query.page - 1) * query.limit;
+    const filters = { search: query.search, ownership: query.ownership };
     const [workspaces, total] = await Promise.all([
       this.workspacesRepository.findManyForUser(userId, {
         skip,
         take: query.limit,
+        sortBy: query.sortBy,
+        sortOrder: query.sortOrder,
+        ...filters,
       }),
-      this.workspacesRepository.countForUser(userId),
+      this.workspacesRepository.countForUser(userId, filters),
     ]);
 
     return new WorkspaceListResponseDto(

@@ -76,6 +76,7 @@ export class TasksService {
       status: query.status,
       priority: query.priority,
       assigneeId: query.assigneeId,
+      search: query.search,
       take: query.limit + 1,
       before,
     });
