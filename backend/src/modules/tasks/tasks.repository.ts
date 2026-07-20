@@ -9,6 +9,18 @@ import {
   WorkspaceMember,
 } from '@prisma/client';
 
+// Prisma 7's client requires a full Date (or ISO-datetime string) for a
+// DateTime column — a date-only string like the "YYYY-MM-DD" an
+// <input type="date"> sends throws a PrismaClientValidationError, not a
+// clean 400. Converting here keeps that Prisma-input quirk contained to
+// the one layer that actually talks to Prisma.
+function toDueDate(value: string | null | undefined): Date | null | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  return value === null ? null : new Date(value);
+}
+
 @Injectable()
 export class TasksRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -37,9 +49,12 @@ export class TasksRepository {
     status?: TaskStatus;
     priority?: TaskPriority;
     assigneeId?: string;
+    dueDate?: string | null;
     createdBy: string;
   }): Promise<Task> {
-    return this.prisma.task.create({ data });
+    return this.prisma.task.create({
+      data: { ...data, dueDate: toDueDate(data.dueDate) },
+    });
   }
 
   findById(id: string): Promise<Task | null> {
@@ -100,6 +115,7 @@ export class TasksRepository {
       status?: TaskStatus;
       priority?: TaskPriority;
       assigneeId?: string | null;
+      dueDate?: string | null;
     },
     statusChange?: {
       userId: string;
@@ -107,12 +123,14 @@ export class TasksRepository {
       newStatus: TaskStatus;
     },
   ): Promise<Task> {
+    const preparedData = { ...data, dueDate: toDueDate(data.dueDate) };
+
     if (!statusChange) {
-      return this.prisma.task.update({ where: { id }, data });
+      return this.prisma.task.update({ where: { id }, data: preparedData });
     }
 
     return this.prisma.$transaction(async (tx) => {
-      const task = await tx.task.update({ where: { id }, data });
+      const task = await tx.task.update({ where: { id }, data: preparedData });
       await tx.taskHistory.create({
         data: {
           taskId: id,

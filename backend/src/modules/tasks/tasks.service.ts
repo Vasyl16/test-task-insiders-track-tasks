@@ -52,6 +52,7 @@ export class TasksService {
       status: dto.status,
       priority: dto.priority,
       assigneeId: dto.assigneeId,
+      dueDate: dto.dueDate,
       createdBy: userId,
     });
 

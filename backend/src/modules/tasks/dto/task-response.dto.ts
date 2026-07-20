@@ -8,6 +8,7 @@ export class TaskResponseDto {
   status: TaskStatus;
   priority: TaskPriority;
   assigneeId: string | null;
+  dueDate: Date | null;
   createdBy: string;
   createdAt: Date;
   updatedAt: Date;
@@ -20,6 +21,7 @@ export class TaskResponseDto {
     status: TaskStatus;
     priority: TaskPriority;
     assigneeId: string | null;
+    dueDate: Date | null;
     createdBy: string;
     createdAt: Date;
     updatedAt: Date;
@@ -31,6 +33,7 @@ export class TaskResponseDto {
     this.status = task.status;
     this.priority = task.priority;
     this.assigneeId = task.assigneeId;
+    this.dueDate = task.dueDate;
     this.createdBy = task.createdBy;
     this.createdAt = task.createdAt;
     this.updatedAt = task.updatedAt;

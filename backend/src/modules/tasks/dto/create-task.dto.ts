@@ -1,5 +1,6 @@
 import {
   IsEnum,
+  IsISO8601,
   IsOptional,
   IsString,
   IsUUID,
@@ -30,4 +31,10 @@ export class CreateTaskDto {
   @IsOptional()
   @IsUUID()
   assigneeId?: string;
+
+  // null means "no due date"; omitted also means "no due date" on create
+  // (there's no existing value to preserve here, unlike update).
+  @IsOptional()
+  @IsISO8601()
+  dueDate?: string | null;
 }

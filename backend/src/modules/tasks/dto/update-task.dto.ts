@@ -1,5 +1,6 @@
 import {
   IsEnum,
+  IsISO8601,
   IsOptional,
   IsString,
   IsUUID,
@@ -32,4 +33,10 @@ export class UpdateTaskDto {
   @IsOptional()
   @IsUUID()
   assigneeId?: string | null;
+
+  // Same tri-state as assigneeId: explicit null clears the due date,
+  // undefined (field absent) leaves it as is.
+  @IsOptional()
+  @IsISO8601()
+  dueDate?: string | null;
 }
