@@ -4,6 +4,7 @@ import type { Project } from '../../entities/project/model/project'
 import { CreateProjectForm } from '../../features/project/components/CreateProjectForm'
 import { EditProjectForm } from '../../features/project/components/EditProjectForm'
 import { EditWorkspaceForm } from '../../features/workspace/components/EditWorkspaceForm'
+import { InviteMemberForm } from '../../features/workspace/components/InviteMemberForm'
 import { useAuth } from '../../shared/api/services/useAuth'
 import { useDeleteProject, useProjectsPage } from '../../shared/api/services/useProjects'
 import { useDeleteWorkspace, useWorkspace } from '../../shared/api/services/useWorkspaces'
@@ -96,6 +97,7 @@ export function WorkspacePage() {
 
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false)
   const [isEditWorkspaceOpen, setIsEditWorkspaceOpen] = useState(false)
+  const [isInviteOpen, setIsInviteOpen] = useState(false)
   const [editingProject, setEditingProject] = useState<Project | null>(null)
 
   const BackLink = (
@@ -173,6 +175,9 @@ export function WorkspacePage() {
         </div>
         {isOwner && (
           <div className="flex shrink-0 items-center gap-3">
+            <Button variant="nav" onClick={() => setIsInviteOpen(true)}>
+              Invite member
+            </Button>
             <Button variant="nav" onClick={() => setIsEditWorkspaceOpen(true)}>
               Edit workspace
             </Button>
@@ -325,6 +330,15 @@ export function WorkspacePage() {
           <EditWorkspaceForm
             workspace={workspace}
             onSaved={() => setIsEditWorkspaceOpen(false)}
+          />
+        </Modal>
+      )}
+
+      {isInviteOpen && (
+        <Modal title="Invite member" onClose={() => setIsInviteOpen(false)}>
+          <InviteMemberForm
+            workspaceId={workspace.id}
+            onSent={() => setIsInviteOpen(false)}
           />
         </Modal>
       )}

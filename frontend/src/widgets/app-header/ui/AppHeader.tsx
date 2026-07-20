@@ -18,6 +18,12 @@ export function AppHeader() {
         </Link>
 
         <div className="flex items-center gap-4">
+          <Link
+            to="/invites"
+            className="font-mono text-xs tracking-wide text-fog uppercase transition-colors hover:text-brass-light"
+          >
+            Invites
+          </Link>
           {user?.name && (
             <span className="font-mono text-xs text-fog">{user.name}</span>
           )}

@@ -4,6 +4,7 @@ import { DashboardLayout } from '../layouts/DashboardLayout'
 import { LoginPage } from '../../pages/auth/LoginPage'
 import { RegisterPage } from '../../pages/auth/RegisterPage'
 import { DashboardPage } from '../../pages/dashboard/DashboardPage'
+import { InvitesPage } from '../../pages/invites/InvitesPage'
 import { ProjectPage } from '../../pages/project/ProjectPage'
 import { WorkspacePage } from '../../pages/workspace/WorkspacePage'
 import { ProtectedRoute } from './ProtectedRoute'
@@ -29,6 +30,7 @@ export const router = createBrowserRouter([
         element: <DashboardLayout />,
         children: [
           { id: 'dashboard', path: '/dashboard', element: <DashboardPage /> },
+          { id: 'invites', path: '/invites', element: <InvitesPage /> },
           { id: 'workspace', path: '/workspaces/:workspaceId', element: <WorkspacePage /> },
           {
             id: 'project',

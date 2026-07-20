@@ -12,6 +12,9 @@ export const queryKeys = {
   auth: {
     me: ['auth', 'me'] as const,
   },
+  invites: {
+    mine: ['invites', 'me'] as const,
+  },
   workspaces: {
     all: ['workspaces'] as const,
     // Prefix shared by every paged list key below — see projects.lists for
