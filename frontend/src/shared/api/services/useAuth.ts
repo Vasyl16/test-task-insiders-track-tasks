@@ -29,7 +29,17 @@ export function useAuth() {
     mutationFn: logoutRequest,
     onSuccess: () => {
       tokenManager.clearTokens()
+      // setQueryData must run *before* clear() — it's the write that
+      // reliably notifies the already-mounted useAuth() observer (same
+      // "removeQueries doesn't, setQueryData does" behavior confirmed
+      // elsewhere in this app) and drives ProtectedRoute's redirect.
+      // clear() afterward wipes every other cached query (workspaces,
+      // projects, tasks, invites, ...); otherwise they'd survive the logout
+      // — stale, and belonging to the wrong account — for whoever logs in
+      // next in this same tab, since the QueryClient is one in-memory
+      // instance for the whole SPA session, not per-user.
       queryClient.setQueryData(queryKeys.auth.me, null)
+      queryClient.clear()
     },
   })
 
