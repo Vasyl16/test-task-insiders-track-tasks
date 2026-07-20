@@ -51,7 +51,7 @@ export function CreateTaskForm({ workspaceId, projectId, onCreated }: CreateTask
     setError,
   } = useForm<TaskFormValues>({
     resolver: zodResolver(taskSchema),
-    defaultValues: { status: 'TODO', priority: 'MEDIUM', assigneeId: '' },
+    defaultValues: { status: 'TODO', priority: 'MEDIUM', assigneeId: '', dueDate: '' },
   })
 
   const onSubmit = async ({
@@ -60,6 +60,7 @@ export function CreateTaskForm({ workspaceId, projectId, onCreated }: CreateTask
     status,
     priority,
     assigneeId,
+    dueDate,
   }: TaskFormValues) => {
     try {
       await createTask.mutateAsync({
@@ -68,8 +69,9 @@ export function CreateTaskForm({ workspaceId, projectId, onCreated }: CreateTask
         status,
         priority,
         assigneeId: assigneeId || null,
+        dueDate: dueDate || null,
       })
-      reset({ title: '', description: '', status: 'TODO', priority: 'MEDIUM', assigneeId: '' })
+      reset({ title: '', description: '', status: 'TODO', priority: 'MEDIUM', assigneeId: '', dueDate: '' })
       onCreated?.()
     } catch (error) {
       setError('root', {
@@ -138,6 +140,14 @@ export function CreateTaskForm({ workspaceId, projectId, onCreated }: CreateTask
             error={errors.assigneeId?.message}
           />
         )}
+      />
+
+      <Input
+        id="task-due-date"
+        label="Due date (optional)"
+        type="date"
+        error={errors.dueDate?.message}
+        {...register('dueDate')}
       />
 
       <FormError message={errors.root?.message} />

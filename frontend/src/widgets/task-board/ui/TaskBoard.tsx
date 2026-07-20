@@ -3,7 +3,7 @@ import { DndContext, DragOverlay, KeyboardSensor, PointerSensor, closestCenter, 
 import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core";
 import { EditTaskForm } from "../../../features/task/components/EditTaskForm";
 import { TaskDetailModal } from "../../task-detail/ui/TaskDetailModal";
-import { TASK_PRIORITY_BORDER_CLASSES, TASK_PRIORITY_LABELS, TASK_STATUS_LABELS, taskStatusValues } from "../../../entities/task/model/task";
+import { TASK_PRIORITY_BORDER_CLASSES, TASK_PRIORITY_LABELS, TASK_STATUS_LABELS, formatDueDate, isTaskOverdue, taskStatusValues } from "../../../entities/task/model/task";
 import type { Task, TaskStatus } from "../../../entities/task/model/task";
 import type { WorkspaceMember } from "../../../entities/workspace/model/workspace-member";
 import { useDeleteTask, useTasksByStatus, useUpdateTask } from "../../../shared/api/services/useTasks";
@@ -381,6 +381,14 @@ function TaskCardContent({ task, assigneeName }: TaskCardContentProps) {
 
       <p className="font-mono text-[11px] text-ink/40">
         {TASK_PRIORITY_LABELS[task.priority]} · {assigneeName ?? "Unassigned"}
+        {task.dueDate && (
+          <>
+            {" · "}
+            <span className={isTaskOverdue(task) ? "text-oxblood" : undefined}>
+              Due {formatDueDate(task.dueDate)}
+            </span>
+          </>
+        )}
       </p>
     </>
   );

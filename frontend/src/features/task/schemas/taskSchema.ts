@@ -7,6 +7,8 @@ export const taskSchema = z.object({
   status: z.enum(taskStatusValues),
   priority: z.enum(taskPriorityValues),
   assigneeId: z.string().optional(),
+  // From an <input type="date">: 'YYYY-MM-DD', or '' when cleared.
+  dueDate: z.string().optional(),
 })
 
 export type TaskFormValues = z.infer<typeof taskSchema>

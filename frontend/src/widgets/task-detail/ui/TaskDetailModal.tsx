@@ -1,5 +1,5 @@
 import { CommentSection } from '../../../features/comment/components/CommentSection'
-import { TASK_PRIORITY_LABELS, TASK_STATUS_LABELS } from '../../../entities/task/model/task'
+import { TASK_PRIORITY_LABELS, TASK_STATUS_LABELS, formatDueDate, isTaskOverdue } from '../../../entities/task/model/task'
 import type { Task } from '../../../entities/task/model/task'
 import { useTaskHistory } from '../../../shared/api/services/useTaskHistory'
 import { getErrorMessage } from '../../../shared/lib/getErrorMessage'
@@ -39,6 +39,14 @@ export function TaskDetailModal({
           <p className="mt-2 font-mono text-xs tracking-wide text-ink/50 uppercase">
             {TASK_STATUS_LABELS[task.status]} · {TASK_PRIORITY_LABELS[task.priority]} ·{' '}
             {assigneeName ?? 'Unassigned'}
+            {task.dueDate && (
+              <>
+                {' · '}
+                <span className={isTaskOverdue(task) ? 'text-oxblood' : undefined}>
+                  Due {formatDueDate(task.dueDate)}
+                </span>
+              </>
+            )}
           </p>
         </div>
 

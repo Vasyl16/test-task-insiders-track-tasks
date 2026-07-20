@@ -42,9 +42,23 @@ export interface Task {
   status: TaskStatus
   priority: TaskPriority
   assigneeId: string | null
+  dueDate: string | null
   createdBy: string
   createdAt: string
   updatedAt: string
+}
+
+export function isTaskOverdue(task: Pick<Task, 'dueDate' | 'status'>): boolean {
+  if (!task.dueDate || task.status === 'DONE') {
+    return false
+  }
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return new Date(task.dueDate) < today
+}
+
+export function formatDueDate(dueDate: string): string {
+  return new Date(dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
 // One entry per status change, written automatically by the backend — never

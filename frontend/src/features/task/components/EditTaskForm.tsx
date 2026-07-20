@@ -64,6 +64,9 @@ export function EditTaskForm({
       status: task.status,
       priority: task.priority,
       assigneeId: task.assigneeId ?? '',
+      // ISO strings always start with YYYY-MM-DD, which is exactly what
+      // <input type="date"> expects — no date library needed for this slice.
+      dueDate: task.dueDate ? task.dueDate.slice(0, 10) : '',
     },
   })
 
@@ -73,6 +76,7 @@ export function EditTaskForm({
     status,
     priority,
     assigneeId,
+    dueDate,
   }: TaskFormValues) => {
     try {
       await updateTask.mutateAsync({
@@ -82,6 +86,7 @@ export function EditTaskForm({
         status,
         priority,
         assigneeId: assigneeId || null,
+        dueDate: dueDate || null,
       })
       onSaved?.()
     } catch (error) {
@@ -151,6 +156,14 @@ export function EditTaskForm({
             error={errors.assigneeId?.message}
           />
         )}
+      />
+
+      <Input
+        id="edit-task-due-date"
+        label="Due date (optional)"
+        type="date"
+        error={errors.dueDate?.message}
+        {...register('dueDate')}
       />
 
       <FormError message={errors.root?.message} />

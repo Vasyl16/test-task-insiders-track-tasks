@@ -21,6 +21,7 @@ export interface TaskPayload {
   status?: TaskStatus
   priority?: TaskPriority
   assigneeId?: string | null
+  dueDate?: string | null
 }
 
 function toRequestBody(payload: Partial<TaskPayload>) {
@@ -29,6 +30,7 @@ function toRequestBody(payload: Partial<TaskPayload>) {
     ...(payload.status !== undefined && { status: payload.status }),
     ...(payload.priority !== undefined && { priority: payload.priority }),
     ...('assigneeId' in payload && { assigneeId: payload.assigneeId || null }),
+    ...('dueDate' in payload && { dueDate: payload.dueDate || null }),
     description: payload.description?.trim() ? payload.description.trim() : undefined,
   }
 }
