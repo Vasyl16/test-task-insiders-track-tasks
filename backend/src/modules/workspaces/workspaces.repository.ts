@@ -102,21 +102,6 @@ export class WorkspacesRepository {
     });
   }
 
-  findUserByEmail(email: string): Promise<User | null> {
-    return this.prisma.user.findUnique({ where: { email } });
-  }
-
-  addMember(
-    workspaceId: string,
-    userId: string,
-    role: WorkspaceRole,
-  ): Promise<WorkspaceMemberWithUser> {
-    return this.prisma.workspaceMember.create({
-      data: { workspaceId, userId, role },
-      include: { user: { select: { id: true, email: true, name: true } } },
-    });
-  }
-
   findMembersForWorkspace(
     workspaceId: string,
   ): Promise<WorkspaceMemberWithUser[]> {

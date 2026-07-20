@@ -8,6 +8,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { CommentsModule } from './modules/comments/comments.module';
 import { EmailModule } from './modules/email/email.module';
 import { HistoryModule } from './modules/history/history.module';
+import { InvitesModule } from './modules/invites/invites.module';
 import { ProjectsModule } from './modules/projects/projects.module';
 import { TasksModule } from './modules/tasks/tasks.module';
 import { UsersModule } from './modules/users/users.module';
@@ -30,6 +31,7 @@ import configuration from './config';
     CommentsModule,
     HistoryModule,
     EmailModule,
+    InvitesModule,
   ],
   controllers: [AppController],
   providers: [

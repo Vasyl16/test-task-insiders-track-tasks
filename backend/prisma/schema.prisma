@@ -26,6 +26,8 @@ model User {
   assignedTasks        Task[]            @relation("TaskAssignee")
   comments             Comment[]
   taskStatusChanges    TaskHistory[]
+  invitesReceived      WorkspaceInvite[] @relation("InviteRecipient")
+  invitesSent          WorkspaceInvite[] @relation("InviteSender")
 }
 
 model RefreshToken {
@@ -56,6 +58,7 @@ model Workspace {
   owner    User              @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Restrict)
   members  WorkspaceMember[]
   projects Project[]
+  invites  WorkspaceInvite[]
 
   @@index([ownerId])
 }
@@ -72,6 +75,36 @@ model WorkspaceMember {
 
   @@unique([workspaceId, userId])
   @@index([userId])
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+// A pending-until-actioned invitation to join a workspace, distinct from
+// WorkspaceMember (which only ever represents an already-accepted
+// membership). No DB-level uniqueness on (workspaceId, invitedUserId) — a
+// user can be re-invited after declining, so uniqueness is enforced at the
+// service layer instead (only one PENDING invite per workspace+user at a
+// time), same "duplicate check in the service, not the schema" precedent as
+// the already-a-member check elsewhere.
+model WorkspaceInvite {
+  id            String       @id @default(uuid())
+  workspaceId   String
+  invitedUserId String
+  invitedById   String
+  status        InviteStatus @default(PENDING)
+  createdAt     DateTime     @default(now())
+  respondedAt   DateTime?
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  invitedUser User      @relation("InviteRecipient", fields: [invitedUserId], references: [id], onDelete: Cascade)
+  invitedBy   User      @relation("InviteSender", fields: [invitedById], references: [id], onDelete: Restrict)
+
+  @@index([workspaceId])
+  @@index([invitedUserId, status])
 }
 
 model Project {

@@ -16,7 +16,6 @@ import { JwtAuthGuard } from '@common/guards';
 import { UserResponseDto } from '@modules/auth/dto/user-response.dto';
 import { CreateWorkspaceDto } from './dto/create-workspace.dto';
 import { FindWorkspacesQueryDto } from './dto/find-workspaces-query.dto';
-import { InviteMemberDto } from './dto/invite-member.dto';
 import { UpdateWorkspaceDto } from './dto/update-workspace.dto';
 import { WorkspaceListResponseDto } from './dto/workspace-list-response.dto';
 import { WorkspaceMemberResponseDto } from './dto/workspace-member-response.dto';
@@ -76,14 +75,5 @@ export class WorkspacesController {
     @Param('id') id: string,
   ): Promise<WorkspaceMemberResponseDto[]> {
     return this.workspacesService.listMembers(id, user.id);
-  }
-
-  @Post(':id/members')
-  inviteMember(
-    @CurrentUser() user: UserResponseDto,
-    @Param('id') id: string,
-    @Body() dto: InviteMemberDto,
-  ): Promise<WorkspaceMemberResponseDto> {
-    return this.workspacesService.inviteMember(id, user.id, dto);
   }
 }
