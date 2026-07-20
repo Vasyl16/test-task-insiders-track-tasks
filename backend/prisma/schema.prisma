@@ -103,7 +103,13 @@ model WorkspaceInvite {
   invitedUser User      @relation("InviteRecipient", fields: [invitedUserId], references: [id], onDelete: Cascade)
   invitedBy   User      @relation("InviteSender", fields: [invitedById], references: [id], onDelete: Restrict)
 
-  @@index([workspaceId])
+  // Composite matches findPendingInvite's exact 3-column WHERE (the
+  // "already has a pending invite?" check run on every invite creation) —
+  // no separate [workspaceId] index needed, since this one already serves
+  // a plain workspaceId lookup via its leftmost column.
+  @@index([workspaceId, invitedUserId, status])
+  // Serves findManyForUser's plain invitedUserId filter (and any future
+  // invitedUserId+status query) via the same leftmost-prefix rule.
   @@index([invitedUserId, status])
 }
 
@@ -155,8 +161,12 @@ model Task {
   comments Comment[]
   history  TaskHistory[]
 
-  @@index([projectId, status, createdAt])
-  @@index([projectId, createdAt])
+  // id appended to match the keyset pagination's full sort key
+  // (createdAt DESC, id DESC) — without it, Postgres can use the index for
+  // the createdAt ordering but still needs an extra sort step to resolve
+  // same-millisecond ties via the id tiebreak.
+  @@index([projectId, status, createdAt, id])
+  @@index([projectId, createdAt, id])
   @@index([assigneeId])
   @@index([createdBy])
 }
