@@ -153,6 +153,8 @@ function CommentItem({
 }: CommentItemProps) {
   const [draft, setDraft] = useState(comment.content)
   const [isSaving, setIsSaving] = useState(false)
+  const trimmedDraft = draft.trim()
+  const isUnchanged = trimmedDraft === comment.content.trim()
 
   if (isEditing) {
     return (
@@ -166,11 +168,11 @@ function CommentItem({
         <div className="mt-2 flex items-center gap-3">
           <Button
             variant="nav"
-            disabled={isSaving || draft.trim().length === 0}
+            disabled={isSaving || trimmedDraft.length === 0 || isUnchanged}
             onClick={async () => {
               setIsSaving(true)
               try {
-                await onSave(draft.trim())
+                await onSave(trimmedDraft)
               } finally {
                 setIsSaving(false)
               }
