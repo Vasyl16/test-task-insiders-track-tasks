@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Task, WorkspaceMember, WorkspaceRole } from '@prisma/client';
+import { RealtimeService } from '@modules/realtime/realtime.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { FindTasksQueryDto } from './dto/find-tasks-query.dto';
 import { TaskListResponseDto } from './dto/task-list-response.dto';
@@ -29,7 +30,10 @@ interface TaskCursor {
 
 @Injectable()
 export class TasksService {
-  constructor(private readonly tasksRepository: TasksRepository) {}
+  constructor(
+    private readonly tasksRepository: TasksRepository,
+    private readonly realtimeService: RealtimeService,
+  ) {}
 
   async create(
     workspaceId: string,
@@ -56,7 +60,9 @@ export class TasksService {
       createdBy: userId,
     });
 
-    return new TaskResponseDto(task);
+    const responseDto = new TaskResponseDto(task);
+    this.realtimeService.emitTaskCreated(projectId, responseDto, userId);
+    return responseDto;
   }
 
   async findAllForProject(
@@ -135,7 +141,9 @@ export class TasksService {
         : undefined;
 
     const task = await this.tasksRepository.update(id, dto, statusChange);
-    return new TaskResponseDto(task);
+    const responseDto = new TaskResponseDto(task);
+    this.realtimeService.emitTaskUpdated(projectId, responseDto, userId);
+    return responseDto;
   }
 
   async remove(
@@ -150,6 +158,7 @@ export class TasksService {
     await this.assertCreatorOrOwner(workspaceId, userId, task);
 
     await this.tasksRepository.delete(id);
+    this.realtimeService.emitTaskDeleted(projectId, id, userId);
   }
 
   private async getWorkspaceOrThrow(workspaceId: string): Promise<void> {

@@ -17,6 +17,7 @@ import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { RegisterDto } from './dto/register.dto';
 import { RegisterResponseDto } from './dto/register-response.dto';
 import { UserResponseDto } from './dto/user-response.dto';
+import { JwtPayload } from './interfaces/jwt-payload.interface';
 
 const SALT_ROUNDS = 10;
 const INVALID_CREDENTIALS_MESSAGE = 'Invalid credentials';
@@ -114,6 +115,25 @@ export class AuthService {
     }
 
     await this.authRepository.revokeRefreshToken(storedToken.id);
+  }
+
+  // Verifies a raw access-token string and resolves the user it belongs to —
+  // used by the WebSocket gateway's handshake, which has no HTTP request/
+  // Authorization header for Passport's JwtStrategy to read, so it can't
+  // reuse AuthGuard('jwt') as-is. Mirrors JwtStrategy.validate() exactly.
+  async verifyAccessToken(token: string): Promise<UserResponseDto> {
+    try {
+      const payload = await this.jwtService.verifyAsync<JwtPayload>(token, {
+        secret: this.configService.get('jwt', { infer: true }).accessSecret,
+      });
+      const user = await this.authRepository.findById(payload.sub);
+      if (!user) {
+        throw new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE);
+      }
+      return new UserResponseDto(user);
+    } catch {
+      throw new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE);
+    }
   }
 
   private async issueTokens(user: User): Promise<AuthTokensDto> {

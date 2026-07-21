@@ -10,6 +10,7 @@ import { EmailModule } from './modules/email/email.module';
 import { HistoryModule } from './modules/history/history.module';
 import { InvitesModule } from './modules/invites/invites.module';
 import { ProjectsModule } from './modules/projects/projects.module';
+import { RealtimeModule } from './modules/realtime/realtime.module';
 import { TasksModule } from './modules/tasks/tasks.module';
 import { UsersModule } from './modules/users/users.module';
 import { WorkspacesModule } from './modules/workspaces/workspaces.module';
@@ -32,6 +33,7 @@ import configuration from './config';
     HistoryModule,
     EmailModule,
     InvitesModule,
+    RealtimeModule,
   ],
   controllers: [AppController],
   providers: [
