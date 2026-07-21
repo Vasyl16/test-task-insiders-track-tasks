@@ -16,10 +16,11 @@ import { CurrentUser } from '@common/decorators';
 import { JwtAuthGuard } from '@common/guards';
 import { UserResponseDto } from '@modules/auth/dto/user-response.dto';
 import { CreateWorkspaceDto } from './dto/create-workspace.dto';
+import { FindWorkspaceMembersQueryDto } from './dto/find-workspace-members-query.dto';
 import { FindWorkspacesQueryDto } from './dto/find-workspaces-query.dto';
 import { UpdateWorkspaceDto } from './dto/update-workspace.dto';
 import { WorkspaceListResponseDto } from './dto/workspace-list-response.dto';
-import { WorkspaceMemberResponseDto } from './dto/workspace-member-response.dto';
+import { WorkspaceMemberListResponseDto } from './dto/workspace-member-list-response.dto';
 import { WorkspaceResponseDto } from './dto/workspace-response.dto';
 import { WorkspacesService } from './workspaces.service';
 
@@ -76,7 +77,18 @@ export class WorkspacesController {
   listMembers(
     @CurrentUser() user: UserResponseDto,
     @Param('id') id: string,
-  ): Promise<WorkspaceMemberResponseDto[]> {
-    return this.workspacesService.listMembers(id, user.id);
+    @Query() query: FindWorkspaceMembersQueryDto,
+  ): Promise<WorkspaceMemberListResponseDto> {
+    return this.workspacesService.listMembers(id, user.id, query);
+  }
+
+  @Delete(':id/members/:userId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  removeMember(
+    @CurrentUser() user: UserResponseDto,
+    @Param('id') id: string,
+    @Param('userId') userId: string,
+  ): Promise<void> {
+    return this.workspacesService.removeMember(id, userId, user.id);
   }
 }

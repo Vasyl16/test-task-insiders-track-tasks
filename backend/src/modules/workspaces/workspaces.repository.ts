@@ -104,11 +104,27 @@ export class WorkspacesRepository {
 
   findMembersForWorkspace(
     workspaceId: string,
+    params: { skip: number; take: number },
   ): Promise<WorkspaceMemberWithUser[]> {
     return this.prisma.workspaceMember.findMany({
       where: { workspaceId },
       include: { user: { select: { id: true, email: true, name: true } } },
       orderBy: { createdAt: 'asc' },
+      skip: params.skip,
+      take: params.take,
+    });
+  }
+
+  countMembersForWorkspace(workspaceId: string): Promise<number> {
+    return this.prisma.workspaceMember.count({ where: { workspaceId } });
+  }
+
+  deleteMembership(
+    workspaceId: string,
+    userId: string,
+  ): Promise<WorkspaceMember> {
+    return this.prisma.workspaceMember.delete({
+      where: { workspaceId_userId: { workspaceId, userId } },
     });
   }
 
