@@ -37,10 +37,13 @@ interface CreateTaskFormProps {
 
 export function CreateTaskForm({ workspaceId, projectId, onCreated }: CreateTaskFormProps) {
   const createTask = useCreateTask(workspaceId, projectId)
-  const { data: members } = useWorkspaceMembers(workspaceId)
+  // The assignee picker needs every member, not one page of them - 100 is
+  // this app's existing max page size ceiling everywhere else, and a
+  // realistic upper bound for a workspace's member count.
+  const { data: membersPage } = useWorkspaceMembers(workspaceId, { page: 1, limit: 100 })
   const assigneeOptions = [
     UNASSIGNED_OPTION,
-    ...(members?.map((member) => ({ value: member.user.id, label: member.user.name })) ?? []),
+    ...(membersPage?.items.map((member) => ({ value: member.user.id, label: member.user.name })) ?? []),
   ]
   const {
     register,

@@ -46,7 +46,10 @@ export function ProjectPage() {
     error: projectError,
     refetch: refetchProject,
   } = useProject(workspaceId, projectId)
-  const { data: members } = useWorkspaceMembers(workspaceId)
+  // The assignee filter/picker needs every member, not one page of them -
+  // 100 is this app's existing max page size ceiling everywhere else.
+  const { data: membersPage } = useWorkspaceMembers(workspaceId, { page: 1, limit: 100 })
+  const members = membersPage?.items
 
   const [taskSearch, setTaskSearch] = useState('')
   const debouncedTaskSearch = useDebouncedValue(taskSearch)

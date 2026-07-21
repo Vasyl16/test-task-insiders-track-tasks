@@ -5,8 +5,10 @@ import {
   getWorkspace,
   getWorkspaceMembers,
   getWorkspacesPage,
+  removeWorkspaceMember,
   updateWorkspace,
   type WorkspaceListParams,
+  type WorkspaceMemberListParams,
   type WorkspacePayload,
 } from '../queries/workspace'
 import { queryKeys } from '../queryKeys'
@@ -27,11 +29,12 @@ export function useWorkspace(id: string) {
   })
 }
 
-export function useWorkspaceMembers(id: string) {
+export function useWorkspaceMembers(id: string, params: WorkspaceMemberListParams) {
   return useQuery({
-    queryKey: queryKeys.workspaces.members(id),
-    queryFn: () => getWorkspaceMembers(id),
+    queryKey: queryKeys.workspaces.members(id, params),
+    queryFn: () => getWorkspaceMembers(id, params),
     enabled: Boolean(id),
+    placeholderData: keepPreviousData,
   })
 }
 
@@ -54,6 +57,17 @@ export function useUpdateWorkspace(id: string) {
     onSuccess: (workspace) => {
       queryClient.setQueryData(queryKeys.workspaces.detail(id), workspace)
       void queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.lists })
+    },
+  })
+}
+
+export function useRemoveWorkspaceMember(workspaceId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (userId: string) => removeWorkspaceMember(workspaceId, userId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.membersLists(workspaceId) })
     },
   })
 }

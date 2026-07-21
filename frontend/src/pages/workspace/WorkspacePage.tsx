@@ -7,7 +7,12 @@ import { EditWorkspaceForm } from '../../features/workspace/components/EditWorks
 import { InviteMemberForm } from '../../features/workspace/components/InviteMemberForm'
 import { useAuth } from '../../shared/api/services/useAuth'
 import { useDeleteProject, useProjectsPage } from '../../shared/api/services/useProjects'
-import { useDeleteWorkspace, useWorkspace } from '../../shared/api/services/useWorkspaces'
+import {
+  useDeleteWorkspace,
+  useRemoveWorkspaceMember,
+  useWorkspace,
+  useWorkspaceMembers,
+} from '../../shared/api/services/useWorkspaces'
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue'
 import { getErrorMessage, isNotFoundOrForbidden } from '../../shared/lib/getErrorMessage'
 import { sortValueToParams } from '../../shared/lib/sortValueToParams'
@@ -19,6 +24,7 @@ import { Skeleton } from '../../shared/ui/Skeleton'
 import { Spinner } from '../../shared/ui/Spinner'
 
 const PROJECTS_PAGE_SIZE = 10
+const MEMBERS_PAGE_SIZE = 5
 
 export function WorkspacePage() {
   const { workspaceId = '' } = useParams<{ workspaceId: string }>()
@@ -34,6 +40,8 @@ export function WorkspacePage() {
   } = useWorkspace(workspaceId)
 
   const [page, setPage] = useState(1)
+  const [memberPage, setMemberPage] = useState(1)
+  const [lastKnownMemberTotalPages, setLastKnownMemberTotalPages] = useState<number | null>(null)
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebouncedValue(search)
   const [sort, setSort] = useState<ListSortValue>('createdAt-desc')
@@ -53,6 +61,8 @@ export function WorkspacePage() {
     setRenderedForWorkspaceId(workspaceId)
     setPage(1)
     setLastKnownTotalPages(null)
+    setMemberPage(1)
+    setLastKnownMemberTotalPages(null)
     setSearch('')
     setSort('createdAt-desc')
     setOwnership('all')
@@ -94,6 +104,15 @@ export function WorkspacePage() {
 
   const deleteWorkspace = useDeleteWorkspace()
   const deleteProject = useDeleteProject(workspaceId)
+  const {
+    data: membersPage,
+    isFetching: isMembersFetching,
+  } = useWorkspaceMembers(workspaceId, { page: memberPage, limit: MEMBERS_PAGE_SIZE })
+  const members = membersPage?.items
+  if (membersPage && membersPage.totalPages !== lastKnownMemberTotalPages) {
+    setLastKnownMemberTotalPages(membersPage.totalPages)
+  }
+  const removeMember = useRemoveWorkspaceMember(workspaceId)
 
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false)
   const [isEditWorkspaceOpen, setIsEditWorkspaceOpen] = useState(false)
@@ -160,6 +179,13 @@ export function WorkspacePage() {
     deleteWorkspace.mutate(workspace.id)
   }
 
+  const handleRemoveMember = (memberName: string, userId: string) => {
+    if (!window.confirm(`Remove ${memberName} from this workspace?`)) {
+      return
+    }
+    removeMember.mutate(userId)
+  }
+
   return (
     <div>
       {BackLink}
@@ -187,6 +213,59 @@ export function WorkspacePage() {
           </div>
         )}
       </div>
+
+      {members && members.length > 0 && (
+        <div className="mt-8">
+          <h2 className="font-mono text-xs tracking-[0.2em] text-brass uppercase">Members</h2>
+          <ul className="mt-3 divide-y divide-brass/15 rounded-2xl bg-paper shadow-lg shadow-black/20">
+            {members.map((member) => (
+              <li key={member.id} className="flex items-center gap-4 px-6 py-4">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-display text-lg text-ink">{member.user.name}</p>
+                  <p className="truncate text-sm text-ink/60">{member.user.email}</p>
+                </div>
+                <span className="shrink-0 font-mono text-[11px] tracking-wide text-ink/40 uppercase">
+                  {member.role === 'OWNER' ? 'Owner' : 'Member'}
+                </span>
+                {isOwner && member.role !== 'OWNER' && (
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveMember(member.user.name, member.user.id)}
+                    className="shrink-0 cursor-pointer font-mono text-xs tracking-wide text-oxblood/70 uppercase transition-colors hover:text-oxblood"
+                  >
+                    Remove
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+
+          {lastKnownMemberTotalPages !== null && lastKnownMemberTotalPages > 1 && (
+            <div className="mt-3 flex items-center justify-between">
+              <Button
+                variant="nav"
+                onClick={() => setMemberPage((current) => Math.max(1, current - 1))}
+                disabled={memberPage <= 1}
+              >
+                Previous
+              </Button>
+              <span className="flex items-center gap-2 font-mono text-xs tracking-wide text-fog uppercase">
+                Page {memberPage} of {lastKnownMemberTotalPages}
+                {isMembersFetching && <Spinner size="sm" />}
+              </span>
+              <Button
+                variant="nav"
+                onClick={() =>
+                  setMemberPage((current) => Math.min(lastKnownMemberTotalPages, current + 1))
+                }
+                disabled={memberPage >= lastKnownMemberTotalPages}
+              >
+                Next
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="mt-8 flex items-center justify-between">
         <h2 className="font-mono text-xs tracking-[0.2em] text-brass uppercase">

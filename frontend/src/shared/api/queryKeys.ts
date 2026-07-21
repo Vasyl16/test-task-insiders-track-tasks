@@ -1,5 +1,5 @@
 import type { TaskStatus } from '../../entities/task/model/task'
-import type { WorkspaceListParams } from './queries/workspace'
+import type { WorkspaceListParams, WorkspaceMemberListParams } from './queries/workspace'
 import type { ProjectListParams } from './queries/project'
 import type { TasksPageParams } from './queries/task'
 
@@ -26,7 +26,12 @@ export const queryKeys = {
     // field out here individually.
     list: (params: WorkspaceListParams) => ['workspaces', 'list', params] as const,
     detail: (id: string) => ['workspaces', id] as const,
-    members: (id: string) => ['workspaces', id, 'members'] as const,
+    // Prefix shared by every paged members key below - invalidate this to
+    // refetch all pages after an invite acceptance or member removal
+    // without needing to know which page(s) are currently mounted.
+    membersLists: (id: string) => ['workspaces', id, 'members'] as const,
+    members: (id: string, params: WorkspaceMemberListParams) =>
+      ['workspaces', id, 'members', params] as const,
   },
   projects: {
     all: (workspaceId: string) => ['workspaces', workspaceId, 'projects'] as const,

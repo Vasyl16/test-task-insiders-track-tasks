@@ -62,7 +62,27 @@ export async function deleteWorkspace(id: string): Promise<void> {
   await api.delete(`/workspaces/${id}`)
 }
 
-export async function getWorkspaceMembers(id: string): Promise<WorkspaceMember[]> {
-  const response = await api.get<WorkspaceMember[]>(`/workspaces/${id}/members`)
+export interface WorkspaceMemberPage {
+  items: WorkspaceMember[]
+  total: number
+  page: number
+  limit: number
+  totalPages: number
+}
+
+export interface WorkspaceMemberListParams {
+  page: number
+  limit: number
+}
+
+export async function getWorkspaceMembers(
+  id: string,
+  params: WorkspaceMemberListParams,
+): Promise<WorkspaceMemberPage> {
+  const response = await api.get<WorkspaceMemberPage>(`/workspaces/${id}/members`, { params })
   return response.data
+}
+
+export async function removeWorkspaceMember(workspaceId: string, userId: string): Promise<void> {
+  await api.delete(`/workspaces/${workspaceId}/members/${userId}`)
 }
