@@ -2,12 +2,14 @@ import { AppConfig } from './config.types';
 
 export default (): AppConfig => ({
   port: parseInt(process.env.PORT ?? '3000', 10),
-  databaseUrl: process.env.DATABASE_URL || '',
+  // Presence enforced at startup by validateEnv - see the jwt block below.
+  databaseUrl: process.env.DATABASE_URL!,
   corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:5173',
   jwt: {
-    accessSecret: process.env.JWT_ACCESS_SECRET || 'change-me-access',
+    // Presence and minimum length are enforced at startup by validateEnv
+    // (src/config/env.validation.ts) - no insecure fallback here on purpose.
+    accessSecret: process.env.JWT_ACCESS_SECRET!,
     accessExpiresIn: process.env.JWT_ACCESS_EXPIRES_IN || '15m',
-    refreshSecret: process.env.JWT_REFRESH_SECRET || 'change-me-refresh',
     refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
   },
   email: {

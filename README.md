@@ -44,7 +44,7 @@ All server state (including the authenticated user) lives in the TanStack Query 
    - **Option A — a remote Postgres (Neon/Supabase/etc.):** paste its connection string as-is. If you'd rather point at a Postgres already running natively on your own machine instead, use `host.docker.internal` in place of `localhost` in the URL, since the backend runs inside a container.
    - **Option B — a local Postgres, no external account needed:** this compose file includes an optional `postgres` service that's off by default. Set `DATABASE_URL=postgresql://postgres:postgres@postgres:5432/task_tracker?schema=public` (that hostname is the compose service name, resolved over the internal Docker network — not `localhost`), then start everything with the `local-db` profile enabled (step 5 below).
 4. Also in `backend/.env`:
-   - `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` — any random string for local use.
+   - `JWT_ACCESS_SECRET` — required, at least 32 characters (the app fails to start otherwise). Generate one with `openssl rand -hex 32`.
    - `EMAIL_FROM` / `EMAIL_TOKEN` — optional. Invite emails are best-effort (a send failure is logged and swallowed, never breaks the request), so the app runs fine with these left blank.
    - `frontend/.env`'s default (`http://localhost:3000/api`) already matches the backend's default published port — no edit needed for a standard local run.
 5. From the repo root:
