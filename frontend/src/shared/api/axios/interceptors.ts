@@ -66,7 +66,14 @@ export function attachInterceptors(instance: AxiosInstance): void {
         return instance(originalRequest)
       } catch (refreshError) {
         refreshPromise = null
-        handleUnrecoverableAuthFailure()
+        // Only a definitive "this refresh token is invalid" 401 from the
+        // server means the session is actually dead. A network error or
+        // 5xx just means the refresh attempt itself failed to complete -
+        // tokens are left alone so a later request can try the whole
+        // refresh cycle again instead of forcing a logout over a blip.
+        if (axios.isAxiosError(refreshError) && refreshError.response?.status === 401) {
+          handleUnrecoverableAuthFailure()
+        }
         return Promise.reject(refreshError)
       }
     },
