@@ -7,7 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { WorkspaceRole } from '@prisma/client';
+import { Prisma, WorkspaceRole } from '@prisma/client';
 import { AppConfig } from '@config/config.types';
 import { EmailService } from '@modules/email/email.service';
 import { CreateInviteDto } from './dto/create-invite.dto';
@@ -75,11 +75,22 @@ export class InvitesService {
       throw new ConflictException(ALREADY_INVITED_MESSAGE);
     }
 
-    const invite = await this.invitesRepository.createInvite({
-      workspaceId,
-      invitedUserId: invitedUser.id,
-      invitedById: ownerId,
-    });
+    // findPendingInvite above is a fast, clean 409 for the common
+    // sequential case, but two concurrent create() calls can both pass it
+    // before either insert commits. The partial unique index on
+    // (workspaceId, invitedUserId) WHERE status = 'PENDING' (see
+    // schema.prisma) is what actually prevents the duplicate row — this
+    // just maps that race, if it happens, to the same message the
+    // pre-check already gives for the non-race case.
+    const invite = await this.runCatchingUniqueConstraint(
+      () =>
+        this.invitesRepository.createInvite({
+          workspaceId,
+          invitedUserId: invitedUser.id,
+          invitedById: ownerId,
+        }),
+      ALREADY_INVITED_MESSAGE,
+    );
 
     // Best-effort: a misconfigured/unreachable mail transport shouldn't fail
     // invite creation itself — the invite is already real and visible on the
@@ -111,13 +122,22 @@ export class InvitesService {
   async accept(id: string, userId: string): Promise<InviteResponseDto> {
     const invite = await this.getInviteOrThrow(id);
     this.assertRecipient(invite, userId);
-    this.assertPending(invite);
+    this.assertPending(invite); // fast, clean 409 for the common sequential case
 
-    const updated = await this.invitesRepository.accept(
-      id,
-      invite.workspaceId,
-      userId,
+    // The only insert inside accept()'s transaction is workspaceMember.create,
+    // so a P2002 here can only mean the membership already exists — two
+    // separate pending invites for the same person, both accepted at once
+    // (see invites.repository.ts's accept() for the full account).
+    const updated = await this.runCatchingUniqueConstraint(
+      () => this.invitesRepository.accept(id, invite.workspaceId, userId),
+      ALREADY_A_MEMBER_MESSAGE,
     );
+    if (!updated) {
+      // Lost the race between assertPending above and the DB transition —
+      // someone else accepted/declined this exact invite in that window.
+      throw new ConflictException(INVITE_ALREADY_ACTIONED_MESSAGE);
+    }
+
     return new InviteResponseDto(updated);
   }
 
@@ -127,7 +147,35 @@ export class InvitesService {
     this.assertPending(invite);
 
     const updated = await this.invitesRepository.decline(id);
+    if (!updated) {
+      throw new ConflictException(INVITE_ALREADY_ACTIONED_MESSAGE);
+    }
+
     return new InviteResponseDto(updated);
+  }
+
+  // Runs a Prisma call, translating a unique-constraint violation (P2002)
+  // into a 409 with a caller-chosen, context-appropriate message instead of
+  // letting it bubble up as a raw Prisma error. Any other error passes
+  // through untouched. Used at every write that races against a DB-level
+  // uniqueness invariant (the partial unique index on pending invites, and
+  // WorkspaceMember's own @@unique) rather than duplicating the same
+  // instanceof check at each call site.
+  private async runCatchingUniqueConstraint<T>(
+    operation: () => Promise<T>,
+    conflictMessage: string,
+  ): Promise<T> {
+    try {
+      return await operation();
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new ConflictException(conflictMessage);
+      }
+      throw error;
+    }
   }
 
   private async getInviteOrThrow(id: string) {

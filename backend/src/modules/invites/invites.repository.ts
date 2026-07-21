@@ -78,27 +78,64 @@ export class InvitesRepository {
   // Marking the invite ACCEPTED and creating the resulting membership must
   // succeed or fail together — an invite silently left PENDING (or ACCEPTED
   // with no actual membership) would be worse than the request just failing.
+  //
+  // The status transition itself is an atomic, conditional updateMany
+  // (WHERE id AND status = PENDING), not a plain update — a plain update
+  // would blindly overwrite the status regardless of what it currently is,
+  // which is exactly how a concurrent accept/decline (or a retried accept)
+  // could silently clobber whichever one lost the race. `count === 0` means
+  // someone else already actioned this invite in between the service's own
+  // pending-check and this call — the service maps that to a 409, same as
+  // the ordinary sequential case.
+  //
+  // A second, independent race remains even with that guard: two *separate*
+  // pending invites for the same (workspaceId, userId) — only possible
+  // before the partial unique index existed, or from data older than it —
+  // being accepted concurrently. Each accept's own updateMany succeeds (they
+  // touch different invite rows), but the second workspaceMember.create
+  // hits WorkspaceMember's existing @@unique([workspaceId, userId]) and
+  // throws a Prisma P2002, rolling back this whole transaction (including
+  // its own status update) — the service catches that and maps it to the
+  // same "already a member" 409.
   accept(
     id: string,
     workspaceId: string,
     userId: string,
-  ): Promise<InviteWithRelations> {
+  ): Promise<InviteWithRelations | null> {
     return this.prisma.$transaction(async (tx) => {
+      const { count } = await tx.workspaceInvite.updateMany({
+        where: { id, status: InviteStatus.PENDING },
+        data: { status: InviteStatus.ACCEPTED, respondedAt: new Date() },
+      });
+      if (count === 0) {
+        return null;
+      }
+
       await tx.workspaceMember.create({
         data: { workspaceId, userId, role: WorkspaceRole.MEMBER },
       });
-      return tx.workspaceInvite.update({
+      return tx.workspaceInvite.findUniqueOrThrow({
         where: { id },
-        data: { status: InviteStatus.ACCEPTED, respondedAt: new Date() },
         include: INVITE_INCLUDE,
       });
     });
   }
 
-  decline(id: string): Promise<InviteWithRelations> {
-    return this.prisma.workspaceInvite.update({
-      where: { id },
+  // Same atomic-conditional-update reasoning as accept() above, guarding
+  // against a concurrent accept/decline/decline on the same invite. A
+  // single updateMany is already atomic on its own — no transaction needed
+  // since decline (unlike accept) never touches a second table.
+  async decline(id: string): Promise<InviteWithRelations | null> {
+    const { count } = await this.prisma.workspaceInvite.updateMany({
+      where: { id, status: InviteStatus.PENDING },
       data: { status: InviteStatus.DECLINED, respondedAt: new Date() },
+    });
+    if (count === 0) {
+      return null;
+    }
+
+    return this.prisma.workspaceInvite.findUniqueOrThrow({
+      where: { id },
       include: INVITE_INCLUDE,
     });
   }

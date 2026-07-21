@@ -85,11 +85,20 @@ enum InviteStatus {
 
 // A pending-until-actioned invitation to join a workspace, distinct from
 // WorkspaceMember (which only ever represents an already-accepted
-// membership). No DB-level uniqueness on (workspaceId, invitedUserId) — a
-// user can be re-invited after declining, so uniqueness is enforced at the
-// service layer instead (only one PENDING invite per workspace+user at a
-// time), same "duplicate check in the service, not the schema" precedent as
-// the already-a-member check elsewhere.
+// membership). Uniqueness on (workspaceId, invitedUserId) is enforced at
+// the DB level, but only *while PENDING* — a user can be re-invited after
+// declining (or after being removed and re-invited later), so a plain
+// table-wide @@unique would be wrong here. Prisma's schema DSL can't
+// express a partial/filtered unique index, so it exists as raw SQL in
+// migration 20260721164303_add_pending_invite_partial_unique_index
+// instead of as a @@unique below:
+//   CREATE UNIQUE INDEX ... ON "WorkspaceInvite" ("workspaceId", "invitedUserId")
+//   WHERE "status" = 'PENDING'
+// InvitesService still pre-checks findPendingInvite() before insert for a
+// fast, clean 409 in the common case — the index is what actually makes
+// this safe under concurrent requests; a race that slips past the
+// pre-check gets caught as a Prisma P2002 and mapped to the same 409 by
+// InvitesService.create().
 model WorkspaceInvite {
   id            String       @id @default(uuid())
   workspaceId   String
@@ -106,7 +115,9 @@ model WorkspaceInvite {
   // Composite matches findPendingInvite's exact 3-column WHERE (the
   // "already has a pending invite?" check run on every invite creation) —
   // no separate [workspaceId] index needed, since this one already serves
-  // a plain workspaceId lookup via its leftmost column.
+  // a plain workspaceId lookup via its leftmost column. This is a plain
+  // (non-unique) index for query performance — the actual pending-invite
+  // uniqueness invariant is the partial unique index described above.
   @@index([workspaceId, invitedUserId, status])
   // Serves findManyForUser's plain invitedUserId filter (and any future
   // invitedUserId+status query) via the same leftmost-prefix rule.

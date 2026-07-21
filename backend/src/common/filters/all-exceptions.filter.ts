@@ -6,7 +6,28 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { Request, Response } from 'express';
+
+// Prisma error codes worth their own HTTP status + message rather than a
+// generic 500 — this is the last-resort safety net for any unique-
+// constraint/missing-record race that isn't already caught and given a
+// specific message closer to its source (e.g. InvitesService's own P2002
+// handling). Business logic should still prefer catching these locally
+// where it can give a better message; this only guarantees a race that
+// slips through never leaks a raw Prisma error or a bare 500.
+const PRISMA_ERROR_RESPONSES: Partial<
+  Record<string, { status: HttpStatus; message: string }>
+> = {
+  P2002: {
+    status: HttpStatus.CONFLICT,
+    message: 'This action conflicts with existing data',
+  },
+  P2025: {
+    status: HttpStatus.NOT_FOUND,
+    message: 'The requested resource was not found',
+  },
+};
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -17,15 +38,20 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
 
+    const prismaResponse =
+      exception instanceof Prisma.PrismaClientKnownRequestError
+        ? PRISMA_ERROR_RESPONSES[exception.code]
+        : undefined;
+
     const status =
       exception instanceof HttpException
         ? exception.getStatus()
-        : HttpStatus.INTERNAL_SERVER_ERROR;
+        : (prismaResponse?.status ?? HttpStatus.INTERNAL_SERVER_ERROR);
 
     const errorResponse =
       exception instanceof HttpException
         ? exception.getResponse()
-        : 'Internal server error';
+        : (prismaResponse?.message ?? 'Internal server error');
 
     const message =
       typeof errorResponse === 'string'
