@@ -1,9 +1,25 @@
 import axios from 'axios'
 import type { AxiosInstance, InternalAxiosRequestConfig } from 'axios'
+import { queryClient } from '../queryClient'
+import { queryKeys } from '../queryKeys'
 import { tokenManager } from './token-manager'
 
 interface RetryableRequestConfig extends InternalAxiosRequestConfig {
   _retry?: boolean
+}
+
+// Shared by both "no refresh token at all" and "the refresh request itself
+// failed" - tokens alone aren't enough. Without also resetting auth.me, the
+// user stays in protected UI with a logged-in-looking header and every
+// subsequent API call failing, since ProtectedRoute's isAuthenticated check
+// only reacts to the query cache, not to tokenManager. setQueryData (not
+// removeQueries) is what actually notifies the already-mounted observer -
+// same reasoning already established for the logout flow - and that's what
+// makes ProtectedRoute redirect to /login on its own, no explicit
+// navigation call needed here.
+function handleUnrecoverableAuthFailure(): void {
+  tokenManager.clearTokens()
+  queryClient.setQueryData(queryKeys.auth.me, null)
 }
 
 export function attachInterceptors(instance: AxiosInstance): void {
@@ -32,7 +48,7 @@ export function attachInterceptors(instance: AxiosInstance): void {
 
       const refreshToken = tokenManager.getRefreshToken()
       if (!refreshToken) {
-        tokenManager.clearTokens()
+        handleUnrecoverableAuthFailure()
         return Promise.reject(error)
       }
 
@@ -50,7 +66,7 @@ export function attachInterceptors(instance: AxiosInstance): void {
         return instance(originalRequest)
       } catch (refreshError) {
         refreshPromise = null
-        tokenManager.clearTokens()
+        handleUnrecoverableAuthFailure()
         return Promise.reject(refreshError)
       }
     },
