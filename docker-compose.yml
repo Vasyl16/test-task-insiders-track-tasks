@@ -1,0 +1,43 @@
+services:
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    # Pulls PORT/DATABASE_URL/CORS_ORIGIN/JWT_*/EMAIL_* straight from your
+    # real backend/.env - same file `npm run start:dev` already reads
+    # outside Docker, so there's only one place to keep these in sync.
+    env_file:
+      - ./backend/.env
+    # Generates the client (can't happen at image-build time - prisma.config.ts
+    # resolves DATABASE_URL eagerly, which only exists once the container is
+    # actually running), applies any pending migrations against whatever
+    # DATABASE_URL points at, then starts the same watch-mode dev server
+    # used outside Docker.
+    command: sh -c "npx prisma generate && npx prisma migrate deploy && npm run start:dev"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./backend:/app
+      # Named volume shadows the bind mount so the image's own
+      # (container-platform) node_modules survives, instead of the bind
+      # mount hiding it behind whatever (or nothing) is on the host.
+      - backend_node_modules:/app/node_modules
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    # VITE_API_URL is read by the browser, not the container, so
+    # frontend/.env's http://localhost:3000/api (the host-published backend
+    # port) is already correct as-is.
+    env_file:
+      - ./frontend/.env
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+
+volumes:
+  backend_node_modules:
+  frontend_node_modules:
