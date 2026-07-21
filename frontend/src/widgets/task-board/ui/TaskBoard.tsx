@@ -7,6 +7,7 @@ import { TASK_PRIORITY_BORDER_CLASSES, TASK_PRIORITY_LABELS, TASK_STATUS_LABELS,
 import type { Task, TaskStatus } from "../../../entities/task/model/task";
 import type { WorkspaceMember } from "../../../entities/workspace/model/workspace-member";
 import { useDeleteTask, useTasksByStatus, useUpdateTask } from "../../../shared/api/services/useTasks";
+import { useProjectRealtime } from "../../../shared/api/services/useProjectRealtime";
 import type { TaskListFilters } from "../../../shared/api/queryKeys";
 import { getErrorMessage } from "../../../shared/lib/getErrorMessage";
 import { Modal } from "../../../shared/ui/Modal";
@@ -30,6 +31,7 @@ interface DraggableData {
 }
 
 export function TaskBoard({ workspaceId, projectId, members, currentUserId, isWorkspaceOwner, filters }: TaskBoardProps) {
+  useProjectRealtime(workspaceId, projectId);
   const updateTask = useUpdateTask(workspaceId, projectId, filters);
   const deleteTask = useDeleteTask(workspaceId, projectId);
   // selectedTask: read-only detail (fields + status history + comments),
