@@ -32,7 +32,7 @@ All server state (including the authenticated user) lives in the TanStack Query 
 
 ## Running it
 
-**Prerequisites:** Docker + Docker Compose, and a reachable PostgreSQL database (a free [Neon](https://neon.tech) or [Supabase](https://supabase.com) project takes a couple of minutes to set up and works well here).
+**Prerequisites:** Docker + Docker Compose. You'll also need a Postgres database — either your own remote one (a free [Neon](https://neon.tech) or [Supabase](https://supabase.com) project takes a couple of minutes to set up) or the local Postgres bundled with this compose file (see option B below) — pick whichever's easier.
 
 1. Clone the repo.
 2. Create the env files from their examples:
@@ -40,17 +40,23 @@ All server state (including the authenticated user) lives in the TanStack Query 
    cp backend/.env.example backend/.env
    cp frontend/.env.example frontend/.env
    ```
-3. Edit `backend/.env`:
-   - `DATABASE_URL` — your Postgres connection string. If you're pointing at a Postgres running on your own machine rather than a cloud one, use `host.docker.internal` instead of `localhost` in the URL, since the backend runs inside a container.
+3. Edit `backend/.env`'s `DATABASE_URL` — pick one:
+   - **Option A — a remote Postgres (Neon/Supabase/etc.):** paste its connection string as-is. If you'd rather point at a Postgres already running natively on your own machine instead, use `host.docker.internal` in place of `localhost` in the URL, since the backend runs inside a container.
+   - **Option B — a local Postgres, no external account needed:** this compose file includes an optional `postgres` service that's off by default. Set `DATABASE_URL=postgresql://postgres:postgres@postgres:5432/task_tracker?schema=public` (that hostname is the compose service name, resolved over the internal Docker network — not `localhost`), then start everything with the `local-db` profile enabled (step 5 below).
+4. Also in `backend/.env`:
    - `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` — any random string for local use.
    - `EMAIL_FROM` / `EMAIL_TOKEN` — optional. Invite emails are best-effort (a send failure is logged and swallowed, never breaks the request), so the app runs fine with these left blank.
    - `frontend/.env`'s default (`http://localhost:3000/api`) already matches the backend's default published port — no edit needed for a standard local run.
-4. From the repo root:
+5. From the repo root:
    ```bash
+   # Option A (remote DB):
    docker-compose up --build
+
+   # Option B (local DB) - also starts the bundled postgres service:
+   docker-compose --profile local-db up --build
    ```
    This installs dependencies, generates the Prisma client, applies all migrations against your `DATABASE_URL`, and starts both dev servers with hot reload.
-5. Open:
+6. Open:
    - Frontend: http://localhost:5173
    - API: http://localhost:3000/api
    - Swagger docs: http://localhost:3000/api/docs

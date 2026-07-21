@@ -1,4 +1,33 @@
 services:
+  # Optional local Postgres - not started by a plain `docker-compose up`.
+  # Use it only if you want a fully local DB instead of a remote one
+  # (Neon/Supabase/etc.):
+  #   1. docker-compose --profile local-db up --build
+  #   2. backend/.env's DATABASE_URL must point at this service by name:
+  #      postgresql://postgres:postgres@postgres:5432/task_tracker?schema=public
+  # If DATABASE_URL already points at a remote DB, just run
+  # `docker-compose up --build` as usual and this service stays off.
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    profiles: ["local-db"]
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: task_tracker
+    ports:
+      # Host side only - 5432 collides with a locally-installed Postgres on
+      # plenty of dev machines. Containers still reach this one at
+      # postgres:5432 over the compose network regardless of this mapping.
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   backend:
     build: ./backend
     restart: unless-stopped
@@ -39,5 +68,6 @@ services:
       - frontend_node_modules:/app/node_modules
 
 volumes:
+  postgres_data:
   backend_node_modules:
   frontend_node_modules:
