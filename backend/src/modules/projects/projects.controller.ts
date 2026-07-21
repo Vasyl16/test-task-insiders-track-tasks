@@ -11,6 +11,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '@common/decorators';
 import { JwtAuthGuard } from '@common/guards';
 import { UserResponseDto } from '@modules/auth/dto/user-response.dto';
@@ -21,6 +22,8 @@ import { ProjectResponseDto } from './dto/project-response.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { ProjectsService } from './projects.service';
 
+@ApiTags('projects')
+@ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('workspaces/:workspaceId/projects')
 export class ProjectsController {

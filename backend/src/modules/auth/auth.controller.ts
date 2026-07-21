@@ -7,6 +7,7 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '@common/decorators';
 import { JwtAuthGuard } from '@common/guards';
 import { AuthService } from './auth.service';
@@ -17,6 +18,7 @@ import { RegisterDto } from './dto/register.dto';
 import { RegisterResponseDto } from './dto/register-response.dto';
 import { UserResponseDto } from './dto/user-response.dto';
 
+@ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -38,6 +40,7 @@ export class AuthController {
     return this.authService.refresh(dto);
   }
 
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
@@ -48,6 +51,7 @@ export class AuthController {
     return this.authService.logout(user.id, dto);
   }
 
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @Get('me')
   me(@CurrentUser() user: UserResponseDto): UserResponseDto {

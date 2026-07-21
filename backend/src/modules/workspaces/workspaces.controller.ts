@@ -11,6 +11,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '@common/decorators';
 import { JwtAuthGuard } from '@common/guards';
 import { UserResponseDto } from '@modules/auth/dto/user-response.dto';
@@ -22,6 +23,8 @@ import { WorkspaceMemberResponseDto } from './dto/workspace-member-response.dto'
 import { WorkspaceResponseDto } from './dto/workspace-response.dto';
 import { WorkspacesService } from './workspaces.service';
 
+@ApiTags('workspaces')
+@ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('workspaces')
 export class WorkspacesController {

@@ -1,4 +1,5 @@
 import { Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '@common/decorators';
 import { JwtAuthGuard } from '@common/guards';
 import { UserResponseDto } from '@modules/auth/dto/user-response.dto';
@@ -9,6 +10,8 @@ import { InvitesService } from './invites.service';
 // user — distinct from the nested workspaces/:workspaceId/invites route
 // (WorkspaceInvitesController) used to *send* one, since "my invites" spans
 // every workspace, not just one.
+@ApiTags('invites')
+@ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('invites')
 export class InvitesController {

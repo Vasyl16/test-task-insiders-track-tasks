@@ -1,6 +1,7 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppConfig } from '@config/config.types';
 import { SocketIoAdapter } from '@modules/realtime/socket-io.adapter';
 import { AppModule } from './app.module';
@@ -20,6 +21,17 @@ async function bootstrap() {
       transform: true,
     }),
   );
+
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle('Task Tracker API')
+    .setDescription(
+      'Workspaces, projects, tasks, comments, and real-time updates.',
+    )
+    .setVersion('1.0')
+    .addBearerAuth()
+    .build();
+  const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
+  SwaggerModule.setup('api/docs', app, swaggerDocument);
 
   await app.listen(configService.get('port', { infer: true }));
 }

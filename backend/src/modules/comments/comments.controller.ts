@@ -10,6 +10,7 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '@common/decorators';
 import { JwtAuthGuard } from '@common/guards';
 import { UserResponseDto } from '@modules/auth/dto/user-response.dto';
@@ -18,6 +19,8 @@ import { CommentResponseDto } from './dto/comment-response.dto';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
 
+@ApiTags('comments')
+@ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller(
   'workspaces/:workspaceId/projects/:projectId/tasks/:taskId/comments',
