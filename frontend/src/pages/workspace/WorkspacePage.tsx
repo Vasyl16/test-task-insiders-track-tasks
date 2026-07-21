@@ -272,14 +272,14 @@ export function WorkspacePage() {
                     <button
                       type="button"
                       onClick={() => setEditingProject(project)}
-                      className="font-mono text-xs tracking-wide text-brass-deep uppercase transition-colors hover:text-brass"
+                      className="cursor-pointer font-mono text-xs tracking-wide text-brass-deep uppercase transition-colors hover:text-brass"
                     >
                       Edit
                     </button>
                     <button
                       type="button"
                       onClick={() => void deleteProject.mutateAsync(project.id)}
-                      className="font-mono text-xs tracking-wide text-oxblood/70 uppercase transition-colors hover:text-oxblood"
+                      className="cursor-pointer font-mono text-xs tracking-wide text-oxblood/70 uppercase transition-colors hover:text-oxblood"
                     >
                       Remove
                     </button>

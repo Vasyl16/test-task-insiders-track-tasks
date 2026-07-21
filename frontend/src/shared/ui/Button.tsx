@@ -6,7 +6,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
 }
 
-const baseClasses = "font-body disabled:cursor-not-allowed";
+const baseClasses = "font-body cursor-pointer disabled:cursor-not-allowed";
 
 const variantClasses: Record<ButtonVariant, string> = {
   // Brass fill reads clearly on both the paper cards (modals, forms) and

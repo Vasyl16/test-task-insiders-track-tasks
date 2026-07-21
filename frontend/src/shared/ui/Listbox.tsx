@@ -71,7 +71,7 @@ export function Listbox<T extends string>({
         aria-expanded={isOpen}
         aria-labelledby={`${id}-label ${id}`}
         onClick={() => setIsOpen((prev) => !prev)}
-        className="mt-1.5 flex w-full items-center gap-2 rounded-lg border border-ink/15 bg-paper px-3 py-2 text-left font-body text-sm text-ink focus:border-brass focus:outline-none"
+        className="mt-1.5 flex w-full cursor-pointer items-center gap-2 rounded-lg border border-ink/15 bg-paper px-3 py-2 text-left font-body text-sm text-ink focus:border-brass focus:outline-none"
       >
         {selected?.dotClassName && (
           <span
@@ -102,7 +102,7 @@ export function Listbox<T extends string>({
                   onChange(option.value)
                   setIsOpen(false)
                 }}
-                className={`flex w-full items-center gap-2 px-3 py-2 text-left font-body text-sm transition-colors hover:bg-ink/5 ${
+                className={`flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left font-body text-sm transition-colors hover:bg-ink/5 ${
                   option.value === value ? 'bg-brass/10 text-ink' : 'text-ink/80'
                 }`}
               >

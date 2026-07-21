@@ -233,7 +233,7 @@ function TaskColumn({ workspaceId, projectId, status, currentUserId, isWorkspace
             <button
               type="button"
               onClick={() => void refetch()}
-              className="mt-2 font-mono text-[11px] tracking-wide text-brass-deep uppercase transition-colors hover:text-brass"
+              className="mt-2 cursor-pointer font-mono text-[11px] tracking-wide text-brass-deep uppercase transition-colors hover:text-brass"
             >
               Retry
             </button>
@@ -281,7 +281,7 @@ function TaskColumn({ workspaceId, projectId, status, currentUserId, isWorkspace
             <button
               type="button"
               onClick={() => void fetchNextPage()}
-              className="font-mono text-[11px] tracking-wide text-brass-deep uppercase transition-colors hover:text-brass"
+              className="cursor-pointer font-mono text-[11px] tracking-wide text-brass-deep uppercase transition-colors hover:text-brass"
             >
               Retry
             </button>
@@ -345,7 +345,7 @@ function TaskCard({ task, assigneeName, canManage, onOpen, onEdit, onRemove }: T
             event.stopPropagation();
             onEdit();
           }}
-          className="font-mono text-[11px] tracking-wide text-brass-deep uppercase transition-colors hover:text-brass"
+          className="cursor-pointer font-mono text-[11px] tracking-wide text-brass-deep uppercase transition-colors hover:text-brass"
         >
           Edit
         </button>
@@ -357,7 +357,7 @@ function TaskCard({ task, assigneeName, canManage, onOpen, onEdit, onRemove }: T
               event.stopPropagation();
               onRemove();
             }}
-            className="font-mono text-[11px] tracking-wide text-oxblood/70 uppercase transition-colors hover:text-oxblood"
+            className="cursor-pointer font-mono text-[11px] tracking-wide text-oxblood/70 uppercase transition-colors hover:text-oxblood"
           >
             Remove
           </button>

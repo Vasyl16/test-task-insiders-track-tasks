@@ -200,14 +200,14 @@ function CommentItem({
             <button
               type="button"
               onClick={onStartEdit}
-              className="text-brass-deep transition-colors hover:text-brass"
+              className="cursor-pointer text-brass-deep transition-colors hover:text-brass"
             >
               Edit
             </button>
             <button
               type="button"
               onClick={onRemove}
-              className="text-oxblood/70 transition-colors hover:text-oxblood"
+              className="cursor-pointer text-oxblood/70 transition-colors hover:text-oxblood"
             >
               Remove
             </button>

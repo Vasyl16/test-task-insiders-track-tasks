@@ -146,7 +146,6 @@ export function DashboardPage() {
             variant="nav"
             onClick={() => setPage((current) => Math.max(1, current - 1))}
             disabled={page <= 1}
-            className="cursor-not-allowed disabled:opacity-50"
           >
             Previous
           </Button>

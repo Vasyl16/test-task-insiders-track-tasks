@@ -85,7 +85,7 @@ export function InvitesPage() {
                             type="button"
                             disabled={acceptInvite.isPending}
                             onClick={() => void acceptInvite.mutateAsync(invite.id)}
-                            className="text-brass-deep transition-colors hover:text-brass disabled:cursor-not-allowed disabled:opacity-50"
+                            className="cursor-pointer text-brass-deep transition-colors hover:text-brass disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             {acceptInvite.isPending && acceptInvite.variables === invite.id ? (
                               <Spinner size="sm" />
@@ -97,7 +97,7 @@ export function InvitesPage() {
                             type="button"
                             disabled={declineInvite.isPending}
                             onClick={() => void declineInvite.mutateAsync(invite.id)}
-                            className="text-oxblood/70 transition-colors hover:text-oxblood disabled:cursor-not-allowed disabled:opacity-50"
+                            className="cursor-pointer text-oxblood/70 transition-colors hover:text-oxblood disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             {declineInvite.isPending && declineInvite.variables === invite.id ? (
                               <Spinner size="sm" />
