@@ -110,7 +110,12 @@ export function CommentSection({
                 await updateComment.mutateAsync({ id: comment.id, content })
                 setEditingId(null)
               }}
-              onRemove={() => void deleteComment.mutateAsync(comment.id)}
+              onRemove={() => {
+                if (!window.confirm('Delete this comment? This cannot be undone.')) {
+                  return
+                }
+                void deleteComment.mutateAsync(comment.id)
+              }}
             />
           ))}
       </div>

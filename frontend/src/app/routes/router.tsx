@@ -5,6 +5,7 @@ import { LoginPage } from '../../pages/auth/LoginPage'
 import { RegisterPage } from '../../pages/auth/RegisterPage'
 import { DashboardPage } from '../../pages/dashboard/DashboardPage'
 import { InvitesPage } from '../../pages/invites/InvitesPage'
+import { NotFoundPage } from '../../pages/not-found/NotFoundPage'
 import { ProjectPage } from '../../pages/project/ProjectPage'
 import { WorkspacePage } from '../../pages/workspace/WorkspacePage'
 import { ProtectedRoute } from './ProtectedRoute'
@@ -44,5 +45,9 @@ export const router = createBrowserRouter([
   {
     path: '/',
     element: <Navigate to="/dashboard" replace />,
+  },
+  {
+    path: '*',
+    element: <NotFoundPage />,
   },
 ])

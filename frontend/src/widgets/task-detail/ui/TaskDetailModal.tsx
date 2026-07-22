@@ -1,6 +1,7 @@
 import { CommentSection } from '../../../features/comment/components/CommentSection'
 import { TASK_PRIORITY_LABELS, TASK_STATUS_LABELS, formatDueDate, isTaskOverdue } from '../../../entities/task/model/task'
 import type { Task } from '../../../entities/task/model/task'
+import { useTask } from '../../../shared/api/services/useTasks'
 import { useTaskHistory } from '../../../shared/api/services/useTaskHistory'
 import { getErrorMessage } from '../../../shared/lib/getErrorMessage'
 import { ErrorState } from '../../../shared/ui/ErrorState'
@@ -10,8 +11,8 @@ import { Skeleton } from '../../../shared/ui/Skeleton'
 interface TaskDetailModalProps {
   workspaceId: string
   projectId: string
-  task: Task
-  assigneeName: string | null
+  taskId: string
+  resolveAssigneeName: (task: Task) => string | null
   currentUserId: string | undefined
   isWorkspaceOwner: boolean
   onClose: () => void
@@ -20,50 +21,76 @@ interface TaskDetailModalProps {
 // Read-only — for actually editing the task, use the separate Edit button
 // on the card, which opens EditTaskForm in its own modal. This one is for
 // viewing details plus the status history and comment thread alongside them.
+//
+// Reads the task via useTask (keyed off queryKeys.tasks.detail) rather than
+// taking a Task snapshot as a prop — a snapshot captured at open time would
+// go stale the moment a drag-and-drop move or another user's realtime edit
+// updates that same cache entry, and this modal has no way to hear about it
+// until closed and reopened. useTask stays live: useUpdateTask's onSuccess
+// and useProjectRealtime's event handlers both write straight into this same
+// cache entry, so this modal re-renders whenever either one does.
 export function TaskDetailModal({
   workspaceId,
   projectId,
-  task,
-  assigneeName,
+  taskId,
+  resolveAssigneeName,
   currentUserId,
   isWorkspaceOwner,
   onClose,
 }: TaskDetailModalProps) {
+  const { data: task, isLoading, isError, error, refetch } = useTask(workspaceId, projectId, taskId)
+
   return (
-    <Modal title={task.title} onClose={onClose} size="lg">
-      <div className="space-y-6">
-        <div>
-          {task.description && (
-            <p className="text-sm whitespace-pre-wrap text-ink/70">{task.description}</p>
-          )}
-          <p className="mt-2 font-mono text-xs tracking-wide text-ink/50 uppercase">
-            {TASK_STATUS_LABELS[task.status]} · {TASK_PRIORITY_LABELS[task.priority]} ·{' '}
-            {assigneeName ?? 'Unassigned'}
-            {task.dueDate && (
-              <>
-                {' · '}
-                <span className={isTaskOverdue(task) ? 'text-oxblood' : undefined}>
-                  Due {formatDueDate(task.dueDate)}
-                </span>
-              </>
+    <Modal title={task?.title ?? 'Task'} onClose={onClose} size="lg">
+      {isLoading && (
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-3/4 bg-ink/10" />
+          <Skeleton className="h-3.5 w-1/2 bg-ink/10" />
+        </div>
+      )}
+
+      {isError && (
+        <ErrorState
+          message={getErrorMessage(error, 'Failed to load this task.')}
+          onRetry={() => void refetch()}
+        />
+      )}
+
+      {task && (
+        <div className="space-y-6">
+          <div>
+            {task.description && (
+              <p className="text-sm whitespace-pre-wrap text-ink/70">{task.description}</p>
             )}
-          </p>
-        </div>
+            <p className="mt-2 font-mono text-xs tracking-wide text-ink/50 uppercase">
+              {TASK_STATUS_LABELS[task.status]} · {TASK_PRIORITY_LABELS[task.priority]} ·{' '}
+              {resolveAssigneeName(task) ?? 'Unassigned'}
+              {task.dueDate && (
+                <>
+                  {' · '}
+                  <span className={isTaskOverdue(task) ? 'text-oxblood' : undefined}>
+                    Due {formatDueDate(task.dueDate)}
+                  </span>
+                </>
+              )}
+            </p>
+          </div>
 
-        <div className="border-t border-ink/10 pt-6">
-          <StatusHistorySection workspaceId={workspaceId} projectId={projectId} taskId={task.id} />
-        </div>
+          <div className="border-t border-ink/10 pt-6">
+            <StatusHistorySection workspaceId={workspaceId} projectId={projectId} taskId={task.id} />
+          </div>
 
-        <div className="border-t border-ink/10 pt-6">
-          <CommentSection
-            workspaceId={workspaceId}
-            projectId={projectId}
-            taskId={task.id}
-            currentUserId={currentUserId}
-            isWorkspaceOwner={isWorkspaceOwner}
-          />
+          <div className="border-t border-ink/10 pt-6">
+            <CommentSection
+              workspaceId={workspaceId}
+              projectId={projectId}
+              taskId={task.id}
+              currentUserId={currentUserId}
+              isWorkspaceOwner={isWorkspaceOwner}
+            />
+          </div>
         </div>
-      </div>
+      )}
     </Modal>
   )
 }

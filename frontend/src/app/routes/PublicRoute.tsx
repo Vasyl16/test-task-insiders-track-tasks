@@ -1,11 +1,16 @@
 import { Navigate, Outlet } from 'react-router'
 import { useAuth } from '../../shared/api/services/useAuth'
+import { Spinner } from '../../shared/ui/Spinner'
 
 export function PublicRoute() {
   const { status } = useAuth()
 
   if (status === 'loading') {
-    return null
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-desk">
+        <Spinner size="lg" />
+      </div>
+    )
   }
 
   if (status === 'authenticated') {

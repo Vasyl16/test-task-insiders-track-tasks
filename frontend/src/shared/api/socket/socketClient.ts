@@ -1,10 +1,10 @@
-import { io, type Socket } from 'socket.io-client'
-import { tokenManager } from '../axios/token-manager'
+import { io, type Socket } from "socket.io-client";
+import { tokenManager } from "../axios/token-manager";
 
 // Socket.IO's own path (/socket.io) lives at the bare origin, not under the
 // REST API's /api prefix — strip it off VITE_API_URL rather than adding a
 // second env var for what's really the same server.
-const SOCKET_URL: string = (import.meta.env.VITE_API_URL as string).replace(/\/api\/?$/, '')
+const SOCKET_URL: string = (import.meta.env.VITE_API_URL as string).replace(/\/api\/?$/, "");
 
 // Created eagerly (but not connected) so any hook that reads this export can
 // always attach listeners to a stable instance, regardless of whether
@@ -15,16 +15,16 @@ const SOCKET_URL: string = (import.meta.env.VITE_API_URL as string).replace(/\/a
 export const socket: Socket = io(SOCKET_URL, {
   autoConnect: false,
   auth: (cb) => cb({ token: tokenManager.getAccessToken() }),
-})
+});
 
 export function connectSocket(): void {
   if (!socket.connected) {
-    socket.connect()
+    socket.connect();
   }
 }
 
 export function disconnectSocket(): void {
   if (socket.connected) {
-    socket.disconnect()
+    socket.disconnect();
   }
 }

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { DndContext, DragOverlay, KeyboardSensor, PointerSensor, closestCenter, useDraggable, useDroppable, useSensor, useSensors } from "@dnd-kit/core";
 import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core";
 import { EditTaskForm } from "../../../features/task/components/EditTaskForm";
@@ -8,8 +9,9 @@ import type { Task, TaskStatus } from "../../../entities/task/model/task";
 import type { WorkspaceMember } from "../../../entities/workspace/model/workspace-member";
 import { useDeleteTask, useTasksByStatus, useUpdateTask } from "../../../shared/api/services/useTasks";
 import { useProjectRealtime } from "../../../shared/api/services/useProjectRealtime";
-import type { TaskListFilters } from "../../../shared/api/queryKeys";
+import { queryKeys, type TaskListFilters } from "../../../shared/api/queryKeys";
 import { getErrorMessage } from "../../../shared/lib/getErrorMessage";
+import { ErrorState } from "../../../shared/ui/ErrorState";
 import { Modal } from "../../../shared/ui/Modal";
 import { Skeleton } from "../../../shared/ui/Skeleton";
 import { Spinner } from "../../../shared/ui/Spinner";
@@ -31,13 +33,20 @@ interface DraggableData {
 }
 
 export function TaskBoard({ workspaceId, projectId, members, currentUserId, isWorkspaceOwner, filters }: TaskBoardProps) {
-  useProjectRealtime(workspaceId, projectId);
+  const { joinError, retryJoin } = useProjectRealtime(workspaceId, projectId, currentUserId);
+  const queryClient = useQueryClient();
   const updateTask = useUpdateTask(workspaceId, projectId, filters);
   const deleteTask = useDeleteTask(workspaceId, projectId);
-  // selectedTask: read-only detail (fields + status history + comments),
+  // selectedTaskId: read-only detail (fields + status history + comments),
   // opened by clicking the card body. editingTask: the actual edit form, in
   // its own separate modal, opened only via the explicit Edit button.
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  //
+  // Only the id is kept in state — TaskDetailModal reads the task itself
+  // live via useTask, so it can't hold a stale snapshot across a
+  // drag-and-drop move or another user's realtime edit. handleOpenTask
+  // still seeds that same cache entry with the row already on hand here so
+  // the modal paints instantly instead of a loading flash on every open.
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   // The only state DnD Kit itself needs: which task is being dragged, so
   // <DragOverlay> knows what to render. Everything else (per-card "am I the
@@ -57,6 +66,11 @@ export function TaskBoard({ workspaceId, projectId, members, currentUserId, isWo
   );
 
   const resolveAssigneeName = (task: Task) => (task.assigneeId ? (memberNameById.get(task.assigneeId) ?? "Unknown") : null);
+
+  const handleOpenTask = (task: Task) => {
+    queryClient.setQueryData(queryKeys.tasks.detail(workspaceId, projectId, task.id), task);
+    setSelectedTaskId(task.id);
+  };
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveTask((event.active.data.current as DraggableData | undefined)?.task ?? null);
@@ -84,6 +98,8 @@ export function TaskBoard({ workspaceId, projectId, members, currentUserId, isWo
       onDragEnd={handleDragEnd}
       onDragCancel={() => setActiveTask(null)}
     >
+      {joinError && <ErrorState message={joinError} onRetry={retryJoin} />}
+
       <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
         {taskStatusValues.map((status) => (
           <TaskColumn
@@ -95,7 +111,7 @@ export function TaskBoard({ workspaceId, projectId, members, currentUserId, isWo
             isWorkspaceOwner={isWorkspaceOwner}
             resolveAssigneeName={resolveAssigneeName}
             filters={filters}
-            onOpen={setSelectedTask}
+            onOpen={handleOpenTask}
             onEdit={setEditingTask}
             onRemove={(id) => void deleteTask.mutateAsync(id)}
           />
@@ -117,20 +133,23 @@ export function TaskBoard({ workspaceId, projectId, members, currentUserId, isWo
         )}
       </DragOverlay>
 
-      {selectedTask && (
+      {selectedTaskId && (
         <TaskDetailModal
           workspaceId={workspaceId}
           projectId={projectId}
-          task={selectedTask}
-          assigneeName={resolveAssigneeName(selectedTask)}
+          taskId={selectedTaskId}
+          resolveAssigneeName={resolveAssigneeName}
           currentUserId={currentUserId}
           isWorkspaceOwner={isWorkspaceOwner}
-          onClose={() => setSelectedTask(null)}
+          onClose={() => setSelectedTaskId(null)}
         />
       )}
 
       {editingTask && (
-        <Modal title="Edit task" onClose={() => setEditingTask(null)}>
+        <Modal
+          title="Edit task"
+          onClose={() => setEditingTask(null)}
+        >
           <EditTaskForm
             workspaceId={workspaceId}
             projectId={projectId}
@@ -167,17 +186,7 @@ function TaskColumn({ workspaceId, projectId, status, currentUserId, isWorkspace
   // The droppable id *is* the destination status — handleDragEnd reads
   // `over.id` straight back as a TaskStatus, no separate lookup table.
   const { setNodeRef: setDroppableRef, isOver } = useDroppable({ id: status });
-  const {
-    data,
-    isLoading,
-    isFetchingNextPage,
-    hasNextPage,
-    fetchNextPage,
-    isError,
-    error,
-    isFetchNextPageError,
-    refetch,
-  } = useTasksByStatus(workspaceId, projectId, status, filters);
+  const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage, isError, error, isFetchNextPageError, refetch } = useTasksByStatus(workspaceId, projectId, status, filters);
 
   const tasks = data?.pages.flatMap((page) => page.items) ?? [];
 
@@ -222,14 +231,11 @@ function TaskColumn({ workspaceId, projectId, status, currentUserId, isWorkspace
         ref={scrollRef}
         className={`space-y-1.5 ${COLUMN_SCROLL_CLASS}`}
       >
-        {isLoading &&
-          Array.from({ length: 3 }, (_, index) => <TaskCardSkeleton key={index} />)}
+        {isLoading && Array.from({ length: 3 }, (_, index) => <TaskCardSkeleton key={index} />)}
 
         {isError && !isLoading && tasks.length === 0 && (
           <div className="px-2 py-6 text-center">
-            <p className="font-mono text-xs text-oxblood">
-              {getErrorMessage(error, "Failed to load tasks.")}
-            </p>
+            <p className="font-mono text-xs text-oxblood">{getErrorMessage(error, "Failed to load tasks.")}</p>
             <button
               type="button"
               onClick={() => void refetch()}
@@ -240,11 +246,7 @@ function TaskColumn({ workspaceId, projectId, status, currentUserId, isWorkspace
           </div>
         )}
 
-        {!isLoading && !isError && tasks.length === 0 && (
-          <p className="px-2 py-6 text-center font-mono text-xs text-fog">
-            {filters.search || filters.priority || filters.assigneeId ? "No matches" : "Drop tasks here"}
-          </p>
-        )}
+        {!isLoading && !isError && tasks.length === 0 && <p className="px-2 py-6 text-center font-mono text-xs text-fog">{filters.search || filters.priority || filters.assigneeId ? "No matches" : "Drop tasks here"}</p>}
 
         {tasks.map((task) => {
           const canManage = isWorkspaceOwner || task.createdBy === currentUserId;
@@ -355,6 +357,9 @@ function TaskCard({ task, assigneeName, canManage, onOpen, onEdit, onRemove }: T
             type="button"
             onClick={(event) => {
               event.stopPropagation();
+              if (!window.confirm(`Delete task "${task.title}"? This cannot be undone.`)) {
+                return;
+              }
               onRemove();
             }}
             className="cursor-pointer font-mono text-[11px] tracking-wide text-oxblood/70 uppercase transition-colors hover:text-oxblood"
@@ -386,9 +391,7 @@ function TaskCardContent({ task, assigneeName }: TaskCardContentProps) {
         {task.dueDate && (
           <>
             {" · "}
-            <span className={isTaskOverdue(task) ? "text-oxblood" : undefined}>
-              Due {formatDueDate(task.dueDate)}
-            </span>
+            <span className={isTaskOverdue(task) ? "text-oxblood" : undefined}>Due {formatDueDate(task.dueDate)}</span>
           </>
         )}
       </p>

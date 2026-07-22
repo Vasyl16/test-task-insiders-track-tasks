@@ -33,6 +33,12 @@ export class RealtimeGateway implements OnGatewayConnection {
   // AuthGuard('jwt') can't be reused here — the token is verified manually
   // via AuthService.verifyAccessToken, the same JWT-verification logic
   // JwtStrategy uses for HTTP requests.
+  //
+  // authPromise is stored synchronously (before the verification it wraps
+  // resolves) so any message handler — handleJoin below — can await it and
+  // reliably see the final client.data.user, instead of racing a client
+  // that emits its first message right after the transport connects, before
+  // this async verification has actually finished.
   async handleConnection(client: AuthenticatedSocket): Promise<void> {
     const token = client.handshake.auth?.token as string | undefined;
     if (!token) {
@@ -40,6 +46,14 @@ export class RealtimeGateway implements OnGatewayConnection {
       return;
     }
 
+    client.data.authPromise = this.authenticate(client, token);
+    await client.data.authPromise;
+  }
+
+  private async authenticate(
+    client: AuthenticatedSocket,
+    token: string,
+  ): Promise<void> {
     try {
       client.data.user = await this.authService.verifyAccessToken(token);
     } catch {
@@ -51,30 +65,44 @@ export class RealtimeGateway implements OnGatewayConnection {
   // handler — the app's global AllExceptionsFilter only handles the HTTP
   // context (switchToHttp()) and would itself throw if it ever had to
   // handle a ws-context exception.
+  //
+  // The returned value becomes the ack payload for a client that emitted
+  // 'project:join' with a callback (@nestjs/platform-socket.io sends a
+  // handler's return value through that callback automatically) — every
+  // exit path now reports success/failure explicitly instead of the caller
+  // just never hearing back when a join is refused.
   @SubscribeMessage('project:join')
   async handleJoin(
     @ConnectedSocket() client: AuthenticatedSocket,
     @MessageBody() dto: JoinProjectDto,
-  ): Promise<void> {
+  ): Promise<{ status: 'ok' } | { status: 'error'; message: string }> {
     try {
+      // See AuthenticatedSocket.authPromise — without this, a join emitted
+      // right after 'connect' can lose the race against handleConnection's
+      // still-in-flight verification and see client.data.user unset even
+      // for a perfectly valid, authenticated session.
+      if (client.data.authPromise) {
+        await client.data.authPromise;
+      }
+
       const user = client.data.user;
       if (!user) {
         client.disconnect(true);
-        return;
+        return { status: 'error', message: 'Not authenticated' };
       }
 
       const workspace = await this.realtimeRepository.findWorkspaceById(
         dto.workspaceId,
       );
       if (!workspace) {
-        return;
+        return { status: 'error', message: 'Workspace not found' };
       }
 
       const project = await this.realtimeRepository.findProjectById(
         dto.projectId,
       );
       if (!project || project.workspaceId !== dto.workspaceId) {
-        return;
+        return { status: 'error', message: 'Project not found' };
       }
 
       const membership = await this.realtimeRepository.findWorkspaceMembership(
@@ -82,14 +110,19 @@ export class RealtimeGateway implements OnGatewayConnection {
         user.id,
       );
       if (!membership) {
-        return;
+        return {
+          status: 'error',
+          message: 'You are not a member of this workspace',
+        };
       }
 
       await client.join(RealtimeGateway.projectRoom(dto.projectId));
+      return { status: 'ok' };
     } catch (error) {
       this.logger.warn(
         `project:join failed: ${error instanceof Error ? error.message : String(error)}`,
       );
+      return { status: 'error', message: 'Failed to join project' };
     }
   }
 
