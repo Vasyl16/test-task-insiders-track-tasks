@@ -1,12 +1,16 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { Comment, WorkspaceMember, WorkspaceRole } from '@prisma/client';
+import { decodeCursor, encodeCursor } from '@common/utils';
 import { CommentsRepository } from './comments.repository';
+import { CommentListResponseDto } from './dto/comment-list-response.dto';
 import { CommentResponseDto } from './dto/comment-response.dto';
 import { CreateCommentDto } from './dto/create-comment.dto';
+import { FindCommentsQueryDto } from './dto/find-comments-query.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
 
 const WORKSPACE_NOT_FOUND_MESSAGE = 'Workspace not found';
@@ -16,6 +20,12 @@ const COMMENT_NOT_FOUND_MESSAGE = 'Comment not found';
 const NOT_A_MEMBER_MESSAGE = 'You are not a member of this workspace';
 const NOT_ALLOWED_MESSAGE =
   'Only the comment author or workspace owner can perform this action';
+const INVALID_CURSOR_MESSAGE = 'Invalid cursor';
+
+interface CommentCursor {
+  createdAt: string;
+  id: string;
+}
 
 @Injectable()
 export class CommentsService {
@@ -47,14 +57,39 @@ export class CommentsService {
     projectId: string,
     taskId: string,
     userId: string,
-  ): Promise<CommentResponseDto[]> {
+    query: FindCommentsQueryDto,
+  ): Promise<CommentListResponseDto> {
     await this.getWorkspaceOrThrow(workspaceId);
     await this.getProjectOrThrow(workspaceId, projectId);
     await this.getTaskOrThrow(projectId, taskId);
     await this.assertMember(workspaceId, userId);
 
-    const comments = await this.commentsRepository.findManyForTask(taskId);
-    return comments.map((comment) => new CommentResponseDto(comment));
+    const after = query.cursor
+      ? this.decodeCommentCursor(query.cursor)
+      : undefined;
+
+    // Fetch one extra row as a peek: its presence is what tells us whether a
+    // next page exists, with no separate count query.
+    const rows = await this.commentsRepository.findManyForTask(taskId, {
+      take: query.limit + 1,
+      after,
+    });
+
+    const hasMore = rows.length > query.limit;
+    const page = hasMore ? rows.slice(0, query.limit) : rows;
+    const lastRow = page[page.length - 1];
+    const nextCursor =
+      hasMore && lastRow
+        ? encodeCursor({
+            createdAt: lastRow.createdAt.toISOString(),
+            id: lastRow.id,
+          } satisfies CommentCursor)
+        : null;
+
+    return new CommentListResponseDto(
+      page.map((comment) => new CommentResponseDto(comment)),
+      nextCursor,
+    );
   }
 
   async update(
@@ -157,6 +192,21 @@ export class CommentsService {
 
     if (!isAuthor && !isOwner) {
       throw new ForbiddenException(NOT_ALLOWED_MESSAGE);
+    }
+  }
+
+  private decodeCommentCursor(cursor: string): { createdAt: Date; id: string } {
+    try {
+      const parsed = decodeCursor<CommentCursor>(cursor);
+      if (
+        typeof parsed.createdAt !== 'string' ||
+        typeof parsed.id !== 'string'
+      ) {
+        throw new Error(INVALID_CURSOR_MESSAGE);
+      }
+      return { createdAt: new Date(parsed.createdAt), id: parsed.id };
+    } catch {
+      throw new BadRequestException(INVALID_CURSOR_MESSAGE);
     }
   }
 }

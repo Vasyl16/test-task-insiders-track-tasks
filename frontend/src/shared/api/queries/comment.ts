@@ -5,16 +5,29 @@ export interface CommentPayload {
   content: string
 }
 
+export interface CommentPage {
+  items: Comment[]
+  nextCursor: string | null
+}
+
+export interface CommentsPageParams {
+  cursor?: string
+  limit?: number
+}
+
 function commentsUrl(workspaceId: string, projectId: string, taskId: string) {
   return `/workspaces/${workspaceId}/projects/${projectId}/tasks/${taskId}/comments`
 }
 
-export async function getComments(
+export async function getCommentsPage(
   workspaceId: string,
   projectId: string,
   taskId: string,
-): Promise<Comment[]> {
-  const response = await api.get<Comment[]>(commentsUrl(workspaceId, projectId, taskId))
+  params: CommentsPageParams,
+): Promise<CommentPage> {
+  const response = await api.get<CommentPage>(commentsUrl(workspaceId, projectId, taskId), {
+    params,
+  })
   return response.data
 }
 

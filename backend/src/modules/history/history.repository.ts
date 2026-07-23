@@ -38,11 +38,29 @@ export class HistoryRepository {
     });
   }
 
-  findManyForTask(taskId: string): Promise<TaskHistoryWithChanger[]> {
+  findManyForTask(
+    taskId: string,
+    params: { take: number; before?: { changedAt: Date; id: string } },
+  ): Promise<TaskHistoryWithChanger[]> {
     return this.prisma.taskHistory.findMany({
-      where: { taskId },
+      where: {
+        taskId,
+        // Keyset pagination: everything strictly "before" the cursor row in
+        // (changedAt DESC, id DESC) order — same tie-break reasoning as
+        // Tasks' own keyset pagination.
+        ...(params.before && {
+          OR: [
+            { changedAt: { lt: params.before.changedAt } },
+            {
+              changedAt: params.before.changedAt,
+              id: { lt: params.before.id },
+            },
+          ],
+        }),
+      },
       include: { changer: { select: { id: true, email: true, name: true } } },
-      orderBy: { changedAt: 'desc' },
+      orderBy: [{ changedAt: 'desc' }, { id: 'desc' }],
+      take: params.take,
     });
   }
 }

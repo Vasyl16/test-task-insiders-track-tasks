@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { Request, Response } from 'express';
+import { extractExceptionMessage } from '@common/utils';
 
 // Prisma error codes worth their own HTTP status + message rather than a
 // generic 500 — this is the last-resort safety net for any unique-
@@ -48,16 +49,14 @@ export class AllExceptionsFilter implements ExceptionFilter {
         ? exception.getStatus()
         : (prismaResponse?.status ?? HttpStatus.INTERNAL_SERVER_ERROR);
 
-    const errorResponse =
-      exception instanceof HttpException
-        ? exception.getResponse()
-        : (prismaResponse?.message ?? 'Internal server error');
-
+    // Always a single string, regardless of which shape the underlying
+    // exception used (ValidationPipe's own `message: string[]` for
+    // multi-field validation failures vs. a hand-thrown exception's plain
+    // string) — API consumers never have to branch on it.
     const message =
-      typeof errorResponse === 'string'
-        ? errorResponse
-        : (errorResponse as { message?: string }).message ||
-          'Internal server error';
+      exception instanceof HttpException
+        ? extractExceptionMessage(exception)
+        : (prismaResponse?.message ?? 'Internal server error');
 
     this.logger.error(
       `${request.method} ${request.url} ${status}`,

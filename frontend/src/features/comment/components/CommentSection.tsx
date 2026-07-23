@@ -40,13 +40,17 @@ export function CommentSection({
   isWorkspaceOwner,
 }: CommentSectionProps) {
   const {
-    data: comments,
+    data,
     isLoading,
-    isFetching,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
     isError,
     error,
+    isFetchNextPageError,
     refetch,
   } = useComments(workspaceId, projectId, taskId)
+  const comments = data?.pages.flatMap((page) => page.items) ?? []
   const createComment = useCreateComment(workspaceId, projectId, taskId)
   const updateComment = useUpdateComment(workspaceId, projectId, taskId)
   const deleteComment = useDeleteComment(workspaceId, projectId, taskId)
@@ -76,7 +80,7 @@ export function CommentSection({
       <h3 className="font-mono text-xs tracking-[0.2em] text-brass-deep uppercase">Comments</h3>
 
       <div className="mt-3 space-y-3">
-        {(isLoading || isFetching) &&
+        {isLoading &&
           Array.from({ length: 2 }, (_, index) => (
             <div key={index} className="space-y-1.5 rounded-lg bg-ink/5 p-3">
               <Skeleton className="h-3 w-1/3 bg-ink/10" />
@@ -84,21 +88,19 @@ export function CommentSection({
             </div>
           ))}
 
-        {isError && !isFetching && (
+        {isError && !isLoading && comments.length === 0 && (
           <ErrorState
             message={getErrorMessage(error, 'Failed to load comments.')}
             onRetry={() => void refetch()}
           />
         )}
 
-        {!isLoading && !isFetching && !isError && comments?.length === 0 && (
+        {!isLoading && !isError && comments.length === 0 && (
           <p className="font-mono text-xs text-ink/50">No comments yet.</p>
         )}
 
         {!isLoading &&
-          !isFetching &&
-          !isError &&
-          comments?.map((comment) => (
+          comments.map((comment) => (
             <CommentItem
               key={comment.id}
               comment={comment}
@@ -118,6 +120,35 @@ export function CommentSection({
               }}
             />
           ))}
+
+        {hasNextPage && (
+          <div className="flex justify-center pt-1">
+            {isFetchingNextPage ? (
+              <Spinner size="sm" />
+            ) : (
+              <button
+                type="button"
+                onClick={() => void fetchNextPage()}
+                className="cursor-pointer font-mono text-[11px] tracking-wide text-brass-deep uppercase transition-colors hover:text-brass"
+              >
+                Load more
+              </button>
+            )}
+          </div>
+        )}
+
+        {isFetchNextPageError && !isFetchingNextPage && (
+          <div className="flex flex-col items-center gap-1 pt-1">
+            <p className="font-mono text-[11px] text-oxblood">Failed to load more.</p>
+            <button
+              type="button"
+              onClick={() => void fetchNextPage()}
+              className="cursor-pointer font-mono text-[11px] tracking-wide text-brass-deep uppercase transition-colors hover:text-brass"
+            >
+              Retry
+            </button>
+          </div>
+        )}
       </div>
 
       <form onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="mt-4" noValidate>

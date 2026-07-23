@@ -36,11 +36,7 @@ interface UseProjectRealtimeResult {
 // component (TaskBoard), and invalidates the same per-status list queries
 // useUpdateTask's onSuccess already invalidates after a local edit — reused
 // here for edits made by *other* users/tabs.
-export function useProjectRealtime(
-  workspaceId: string,
-  projectId: string,
-  currentUserId: string | undefined,
-): UseProjectRealtimeResult {
+export function useProjectRealtime(workspaceId: string, projectId: string, currentUserId: string | undefined): UseProjectRealtimeResult {
   const queryClient = useQueryClient();
   const [joinError, setJoinError] = useState<string | null>(null);
   // Bumped on every new join attempt so a late ack/timeout from an attempt

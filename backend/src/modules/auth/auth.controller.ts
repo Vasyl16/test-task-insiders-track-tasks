@@ -40,15 +40,15 @@ export class AuthController {
     return this.authService.refresh(dto);
   }
 
-  @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  // Deliberately not behind JwtAuthGuard: the refresh token itself (hashed
+  // and matched against the DB, same as /auth/refresh) is what proves the
+  // caller may revoke this session — requiring a *also still-valid* access
+  // token here added no real security benefit and just broke logout for the
+  // common case of a session sitting idle past the access token's short TTL.
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
-  logout(
-    @CurrentUser() user: UserResponseDto,
-    @Body() dto: RefreshTokenDto,
-  ): Promise<void> {
-    return this.authService.logout(user.id, dto);
+  logout(@Body() dto: RefreshTokenDto): Promise<void> {
+    return this.authService.logout(dto);
   }
 
   @ApiBearerAuth()

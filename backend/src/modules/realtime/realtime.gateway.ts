@@ -1,4 +1,4 @@
-import { Logger } from '@nestjs/common';
+import { Logger, UseFilters, UsePipes, ValidationPipe } from '@nestjs/common';
 import {
   ConnectedSocket,
   MessageBody,
@@ -8,12 +8,27 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import type { Server } from 'socket.io';
+import { WsExceptionFilter } from '@common/filters';
 import { AuthService } from '@modules/auth/auth.service';
 import { JoinProjectDto } from './dto/join-project.dto';
 import type { AuthenticatedSocket } from './interfaces/authenticated-socket.interface';
 import { RealtimeRepository } from './realtime.repository';
 
 @WebSocketGateway()
+@UseFilters(WsExceptionFilter)
+// main.ts's app.useGlobalPipes(...) only binds to the HTTP adapter — a WS
+// gateway needs its own @UsePipes() to get the same @MessageBody() DTO
+// validation @Body() gets for free on every HTTP controller. Without this,
+// JoinProjectDto's @IsUUID() checks were never actually running: a
+// malformed payload (missing fields, a non-UUID string) passed straight
+// through to the handler body instead of being rejected up front.
+@UsePipes(
+  new ValidationPipe({
+    whitelist: true,
+    forbidNonWhitelisted: true,
+    transform: true,
+  }),
+)
 export class RealtimeGateway implements OnGatewayConnection {
   @WebSocketServer()
   server!: Server;

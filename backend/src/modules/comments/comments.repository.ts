@@ -53,11 +53,30 @@ export class CommentsRepository {
     return this.prisma.comment.findUnique({ where: { id } });
   }
 
-  findManyForTask(taskId: string): Promise<CommentWithAuthor[]> {
+  findManyForTask(
+    taskId: string,
+    params: { take: number; after?: { createdAt: Date; id: string } },
+  ): Promise<CommentWithAuthor[]> {
     return this.prisma.comment.findMany({
-      where: { taskId },
+      where: {
+        taskId,
+        // Keyset pagination: everything strictly "after" the cursor row in
+        // (createdAt ASC, id ASC) order — same tie-break reasoning as
+        // Tasks' own keyset pagination, just walking forward instead of
+        // back since comments read oldest-to-newest.
+        ...(params.after && {
+          OR: [
+            { createdAt: { gt: params.after.createdAt } },
+            {
+              createdAt: params.after.createdAt,
+              id: { gt: params.after.id },
+            },
+          ],
+        }),
+      },
       include: { author: { select: { id: true, email: true, name: true } } },
-      orderBy: { createdAt: 'asc' },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      take: params.take,
     });
   }
 

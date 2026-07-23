@@ -193,7 +193,9 @@ model Comment {
   task   Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
   author User @relation(fields: [authorId], references: [id], onDelete: Restrict)
 
-  @@index([taskId, createdAt])
+  // Trailing id backs the keyset-pagination cursor's tie-break comparison —
+  // same reasoning as Task's own [projectId, ...] indexes.
+  @@index([taskId, createdAt, id])
   @@index([authorId])
 }
 
@@ -211,5 +213,7 @@ model TaskHistory {
   task    Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
   changer User @relation(fields: [changedBy], references: [id], onDelete: Restrict)
 
-  @@index([taskId, changedAt])
+  // Trailing id backs the keyset-pagination cursor's tie-break comparison —
+  // same reasoning as Task's own [projectId, ...] indexes.
+  @@index([taskId, changedAt, id])
 }

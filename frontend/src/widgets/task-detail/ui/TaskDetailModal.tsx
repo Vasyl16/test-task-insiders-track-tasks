@@ -7,6 +7,7 @@ import { getErrorMessage } from '../../../shared/lib/getErrorMessage'
 import { ErrorState } from '../../../shared/ui/ErrorState'
 import { Modal } from '../../../shared/ui/Modal'
 import { Skeleton } from '../../../shared/ui/Skeleton'
+import { Spinner } from '../../../shared/ui/Spinner'
 
 interface TaskDetailModalProps {
   workspaceId: string
@@ -109,11 +110,18 @@ function formatTimestamp(iso: string): string {
 }
 
 function StatusHistorySection({ workspaceId, projectId, taskId }: StatusHistorySectionProps) {
-  const { data: history, isLoading, isError, error, refetch } = useTaskHistory(
-    workspaceId,
-    projectId,
-    taskId,
-  )
+  const {
+    data,
+    isLoading,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+    isError,
+    error,
+    isFetchNextPageError,
+    refetch,
+  } = useTaskHistory(workspaceId, projectId, taskId)
+  const history = data?.pages.flatMap((page) => page.items) ?? []
 
   return (
     <div>
@@ -127,20 +135,19 @@ function StatusHistorySection({ workspaceId, projectId, taskId }: StatusHistoryS
             <Skeleton key={index} className="h-3.5 w-3/4 bg-ink/10" />
           ))}
 
-        {isError && (
+        {isError && !isLoading && history.length === 0 && (
           <ErrorState
             message={getErrorMessage(error, 'Failed to load status history.')}
             onRetry={() => void refetch()}
           />
         )}
 
-        {!isLoading && !isError && history?.length === 0 && (
+        {!isLoading && !isError && history.length === 0 && (
           <p className="font-mono text-xs text-ink/50">No status changes yet.</p>
         )}
 
         {!isLoading &&
-          !isError &&
-          history?.map((entry) => (
+          history.map((entry) => (
             <p key={entry.id} className="font-mono text-xs text-ink/50">
               <span className="text-brass-deep">{entry.changedBy.name}</span> changed status
               from <span className="text-ink">{TASK_STATUS_LABELS[entry.oldStatus]}</span> to{' '}
@@ -149,6 +156,35 @@ function StatusHistorySection({ workspaceId, projectId, taskId }: StatusHistoryS
               {formatTimestamp(entry.changedAt)}
             </p>
           ))}
+
+        {hasNextPage && (
+          <div className="flex justify-center pt-1">
+            {isFetchingNextPage ? (
+              <Spinner size="sm" />
+            ) : (
+              <button
+                type="button"
+                onClick={() => void fetchNextPage()}
+                className="cursor-pointer font-mono text-[11px] tracking-wide text-brass-deep uppercase transition-colors hover:text-brass"
+              >
+                Load more
+              </button>
+            )}
+          </div>
+        )}
+
+        {isFetchNextPageError && !isFetchingNextPage && (
+          <div className="flex flex-col items-center gap-1 pt-1">
+            <p className="font-mono text-[11px] text-oxblood">Failed to load more.</p>
+            <button
+              type="button"
+              onClick={() => void fetchNextPage()}
+              className="cursor-pointer font-mono text-[11px] tracking-wide text-brass-deep uppercase transition-colors hover:text-brass"
+            >
+              Retry
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )

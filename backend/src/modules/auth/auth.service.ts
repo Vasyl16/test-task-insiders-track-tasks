@@ -101,16 +101,16 @@ export class AuthService {
     });
   }
 
-  async logout(userId: string, dto: RefreshTokenDto): Promise<void> {
+  // No access token/userId is checked here on purpose — see AuthController.
+  // The refresh token's own hash match is the whole authorization: whoever
+  // holds it can already mint new access tokens with it (see refresh()
+  // above, also unauthenticated), so revoking it needs no extra proof.
+  async logout(dto: RefreshTokenDto): Promise<void> {
     const tokenHash = this.hashToken(dto.refreshToken);
     const storedToken =
       await this.authRepository.findRefreshTokenByHash(tokenHash);
 
-    if (
-      !storedToken ||
-      storedToken.userId !== userId ||
-      storedToken.revokedAt
-    ) {
+    if (!storedToken || storedToken.revokedAt) {
       throw new UnauthorizedException(INVALID_REFRESH_TOKEN_MESSAGE);
     }
 

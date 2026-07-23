@@ -9,6 +9,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Prisma, WorkspaceRole } from '@prisma/client';
 import { AppConfig } from '@config/config.types';
+import { escapeHtml } from '@common/utils';
 import { EmailService } from '@modules/email/email.service';
 import { CreateInviteDto } from './dto/create-invite.dto';
 import { InviteResponseDto } from './dto/invite-response.dto';
@@ -97,10 +98,16 @@ export class InvitesService {
     // recipient's own Invites page regardless of whether the email lands.
     try {
       const inviteUrl = `${this.configService.get('corsOrigin', { infer: true })}/invites`;
+      // invitedBy.name and workspace.name are both user-supplied (set at
+      // registration / workspace creation) — escaped here since they're
+      // interpolated straight into an HTML email body, the one place in the
+      // app that isn't a React render (which already escapes automatically).
+      const inviterName = escapeHtml(invite.invitedBy.name);
+      const workspaceName = escapeHtml(invite.workspace.name);
       await this.emailService.sendEmail(
         invitedUser.email,
         `You've been invited to "${invite.workspace.name}"`,
-        `<p>${invite.invitedBy.name} invited you to join the workspace <strong>${invite.workspace.name}</strong>.</p>
+        `<p>${inviterName} invited you to join the workspace <strong>${workspaceName}</strong>.</p>
          <p><a href="${inviteUrl}">View your invites</a></p>`,
         `${invite.invitedBy.name} invited you to join the workspace "${invite.workspace.name}". View your invites: ${inviteUrl}`,
       );
