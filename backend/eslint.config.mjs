@@ -32,4 +32,16 @@ export default tseslint.config(
       "prettier/prettier": ["error", { endOfLine: "auto" }],
     },
   },
+  {
+    // Jest mock objects (e.g. `jest.Mocked<Repo>`) routinely trip
+    // `unbound-method` when a mocked method is passed to `expect(...)`, and
+    // supertest's `response.body` is untyped `any` — both are normal in
+    // test code, not real safety issues.
+    files: ['**/*.spec.ts', '**/*.e2e-spec.ts'],
+    rules: {
+      '@typescript-eslint/unbound-method': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+    },
+  },
 );
