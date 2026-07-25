@@ -40,6 +40,10 @@ export async function register(
 export async function logoutRequest(): Promise<void> {
   const refreshToken = tokenManager.getRefreshToken()
   if (refreshToken) {
-    await api.post('/auth/logout', { refreshToken }).catch(() => undefined)
+    // skipRefresh: a 401 here means the session's already dead - no point
+    // refreshing the access token just to retry a logout call.
+    await api
+      .post('/auth/logout', { refreshToken }, { skipRefresh: true })
+      .catch(() => undefined)
   }
 }

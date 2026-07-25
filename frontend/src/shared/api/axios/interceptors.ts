@@ -4,6 +4,16 @@ import { queryClient } from '../queryClient'
 import { queryKeys } from '../queryKeys'
 import { tokenManager } from './token-manager'
 
+declare module 'axios' {
+  export interface AxiosRequestConfig {
+    // Opt a request (e.g. /auth/logout) out of the 401 -> refresh -> retry
+    // flow: the user is already ending the session, so refreshing the
+    // access token just to retry a logout call is wasted work, and could
+    // even resurrect a session the caller is trying to kill.
+    skipRefresh?: boolean
+  }
+}
+
 interface RetryableRequestConfig extends InternalAxiosRequestConfig {
   _retry?: boolean
 }
@@ -42,7 +52,11 @@ export function attachInterceptors(instance: AxiosInstance): void {
 
       const originalRequest = error.config as RetryableRequestConfig
 
-      if (error.response?.status !== 401 || originalRequest._retry) {
+      if (
+        error.response?.status !== 401 ||
+        originalRequest._retry ||
+        originalRequest.skipRefresh
+      ) {
         return Promise.reject(error)
       }
 
