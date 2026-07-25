@@ -1,0 +1,77 @@
+name: Backend CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  backend:
+    name: Lint, unit, and e2e tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: task_tracker_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/task_tracker_test?schema=public
+      # 32+ characters, as env.validation.ts requires - a throwaway value,
+      # never a real secret.
+      JWT_ACCESS_SECRET: ci-only-throwaway-secret-not-a-real-value
+      REDIS_URL: redis://localhost:6379
+      CORS_ORIGIN: http://localhost:5173
+      # The e2e suites fire well over the production default (10/min) of
+      # requests from the same IP in quick succession - this only relaxes
+      # the limit for this run, it doesn't disable the guard.
+      THROTTLE_LIMIT: "1000"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client and apply migrations
+        run: |
+          npx prisma generate
+          npx prisma migrate deploy
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit & integration tests
+        run: npm test
+
+      - name: E2E tests
+        run: npm run test:e2e

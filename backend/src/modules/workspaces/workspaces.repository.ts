@@ -119,6 +119,17 @@ export class WorkspacesRepository {
     return this.prisma.workspaceMember.count({ where: { workspaceId } });
   }
 
+  // Used by WorkspacesService to fan out cache invalidation to every
+  // member's own workspace-list cache on a rename/delete, not by any
+  // endpoint directly.
+  async findMemberUserIds(workspaceId: string): Promise<string[]> {
+    const members = await this.prisma.workspaceMember.findMany({
+      where: { workspaceId },
+      select: { userId: true },
+    });
+    return members.map((member) => member.userId);
+  }
+
   deleteMembership(
     workspaceId: string,
     userId: string,

@@ -19,7 +19,8 @@
       "@common/*": ["src/common/*"],
       "@config/*": ["src/config/*"],
       "@prisma/*": ["src/prisma/*"],
-      "@modules/*": ["src/modules/*"]
+      "@modules/*": ["src/modules/*"],
+      "@redis/*": ["src/redis/*"]
     },
     "incremental": true,
     "skipLibCheck": true,

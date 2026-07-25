@@ -4,6 +4,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Project, WorkspaceMember, WorkspaceRole } from '@prisma/client';
+import { cacheKeys } from '@redis/cache-keys';
+import { RedisService } from '@redis/redis.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { FindProjectsQueryDto } from './dto/find-projects-query.dto';
 import { ProjectListResponseDto } from './dto/project-list-response.dto';
@@ -19,7 +21,10 @@ const NOT_ALLOWED_MESSAGE =
 
 @Injectable()
 export class ProjectsService {
-  constructor(private readonly projectsRepository: ProjectsRepository) {}
+  constructor(
+    private readonly projectsRepository: ProjectsRepository,
+    private readonly redisService: RedisService,
+  ) {}
 
   async create(
     workspaceId: string,
@@ -36,6 +41,11 @@ export class ProjectsService {
       createdBy: userId,
     });
 
+    // The new project shows up in every member's list (at least under the
+    // default 'all' ownership filter), not just the creator's - invalidate
+    // everyone's cached pages rather than only the actor's.
+    await this.invalidateListsForAllMembers(workspaceId);
+
     return new ProjectResponseDto(project);
   }
 
@@ -46,6 +56,13 @@ export class ProjectsService {
   ): Promise<ProjectListResponseDto> {
     await this.getWorkspaceOrThrow(workspaceId);
     await this.assertMember(workspaceId, userId);
+
+    const cacheKey = cacheKeys.projectList(workspaceId, userId, { ...query });
+    const cached =
+      await this.redisService.get<ProjectListResponseDto>(cacheKey);
+    if (cached) {
+      return cached;
+    }
 
     const skip = (query.page - 1) * query.limit;
     const filters = { search: query.search, ownership: query.ownership };
@@ -60,12 +77,14 @@ export class ProjectsService {
       this.projectsRepository.countForWorkspace(workspaceId, userId, filters),
     ]);
 
-    return new ProjectListResponseDto(
+    const result = new ProjectListResponseDto(
       projects.map((project) => new ProjectResponseDto(project)),
       total,
       query.page,
       query.limit,
     );
+    await this.redisService.set(cacheKey, result);
+    return result;
   }
 
   async findOne(
@@ -75,9 +94,17 @@ export class ProjectsService {
   ): Promise<ProjectResponseDto> {
     await this.getWorkspaceOrThrow(workspaceId);
     await this.assertMember(workspaceId, userId);
-    const project = await this.getProjectOrThrow(workspaceId, id);
 
-    return new ProjectResponseDto(project);
+    const cacheKey = cacheKeys.projectDetail(workspaceId, id);
+    const cached = await this.redisService.get<ProjectResponseDto>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const project = await this.getProjectOrThrow(workspaceId, id);
+    const dto = new ProjectResponseDto(project);
+    await this.redisService.set(cacheKey, dto);
+    return dto;
   }
 
   async update(
@@ -91,6 +118,10 @@ export class ProjectsService {
     await this.assertCreatorOrOwner(workspaceId, userId, project);
 
     const updated = await this.projectsRepository.update(id, dto);
+
+    await this.redisService.del(cacheKeys.projectDetail(workspaceId, id));
+    await this.invalidateListsForAllMembers(workspaceId);
+
     return new ProjectResponseDto(updated);
   }
 
@@ -100,6 +131,9 @@ export class ProjectsService {
     await this.assertCreatorOrOwner(workspaceId, userId, project);
 
     await this.projectsRepository.delete(id);
+
+    await this.redisService.del(cacheKeys.projectDetail(workspaceId, id));
+    await this.invalidateListsForAllMembers(workspaceId);
   }
 
   private async getWorkspaceOrThrow(workspaceId: string): Promise<void> {
@@ -147,5 +181,19 @@ export class ProjectsService {
     if (!isCreator && !isOwner) {
       throw new ForbiddenException(NOT_ALLOWED_MESSAGE);
     }
+  }
+
+  private async invalidateListsForAllMembers(
+    workspaceId: string,
+  ): Promise<void> {
+    const memberIds =
+      await this.projectsRepository.findWorkspaceMemberUserIds(workspaceId);
+    await Promise.all(
+      memberIds.map((memberId) =>
+        this.redisService.delByPrefix(
+          cacheKeys.projectListPrefix(workspaceId, memberId),
+        ),
+      ),
+    );
   }
 }

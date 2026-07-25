@@ -11,6 +11,7 @@
     "^@common/(.*)$": "<rootDir>/../src/common/$1",
     "^@config/(.*)$": "<rootDir>/../src/config/$1",
     "^@modules/(.*)$": "<rootDir>/../src/modules/$1",
-    "^@prisma/prisma\\.(service|module)$": "<rootDir>/../src/prisma/prisma.$1"
+    "^@prisma/prisma\\.(service|module)$": "<rootDir>/../src/prisma/prisma.$1",
+    "^@redis/(.*)$": "<rootDir>/../src/redis/$1"
   }
 }

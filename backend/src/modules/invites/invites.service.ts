@@ -11,6 +11,8 @@ import { Prisma, WorkspaceRole } from '@prisma/client';
 import { AppConfig } from '@config/config.types';
 import { escapeHtml } from '@common/utils';
 import { EmailService } from '@modules/email/email.service';
+import { cacheKeys } from '@redis/cache-keys';
+import { RedisService } from '@redis/redis.service';
 import { CreateInviteDto } from './dto/create-invite.dto';
 import { InviteResponseDto } from './dto/invite-response.dto';
 import { InvitesRepository } from './invites.repository';
@@ -37,6 +39,7 @@ export class InvitesService {
     private readonly invitesRepository: InvitesRepository,
     private readonly emailService: EmailService,
     private readonly configService: ConfigService<AppConfig, true>,
+    private readonly redisService: RedisService,
   ) {}
 
   async create(
@@ -118,12 +121,24 @@ export class InvitesService {
       );
     }
 
+    // Only the invitee's own list gains this invite - the inviting owner
+    // never sees other people's invites on this endpoint.
+    await this.redisService.del(cacheKeys.invitesMe(invitedUser.id));
+
     return new InviteResponseDto(invite);
   }
 
   async findAllForUser(userId: string): Promise<InviteResponseDto[]> {
+    const cacheKey = cacheKeys.invitesMe(userId);
+    const cached = await this.redisService.get<InviteResponseDto[]>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     const invites = await this.invitesRepository.findManyForUser(userId);
-    return invites.map((invite) => new InviteResponseDto(invite));
+    const result = invites.map((invite) => new InviteResponseDto(invite));
+    await this.redisService.set(cacheKey, result);
+    return result;
   }
 
   async accept(id: string, userId: string): Promise<InviteResponseDto> {
@@ -145,6 +160,18 @@ export class InvitesService {
       throw new ConflictException(INVITE_ALREADY_ACTIONED_MESSAGE);
     }
 
+    // Accepting creates a real WorkspaceMember row, so three caches go
+    // stale at once: this user's own invite list (status changed), their
+    // workspace list (a new workspace just appeared in it), and the
+    // workspace's own member list (it just gained a member).
+    await Promise.all([
+      this.redisService.del(cacheKeys.invitesMe(userId)),
+      this.redisService.delByPrefix(cacheKeys.workspaceListPrefix(userId)),
+      this.redisService.delByPrefix(
+        cacheKeys.workspaceMembersPrefix(invite.workspaceId),
+      ),
+    ]);
+
     return new InviteResponseDto(updated);
   }
 
@@ -157,6 +184,8 @@ export class InvitesService {
     if (!updated) {
       throw new ConflictException(INVITE_ALREADY_ACTIONED_MESSAGE);
     }
+
+    await this.redisService.del(cacheKeys.invitesMe(userId));
 
     return new InviteResponseDto(updated);
   }

@@ -28,12 +28,34 @@ services:
       timeout: 5s
       retries: 10
 
+  # Optional local Redis - same story as postgres above: not started by a
+  # plain `docker-compose up`, only with --profile local-db. If REDIS_URL
+  # already points at a remote instance (Upstash/Elasticache/etc.), leave
+  # this off and just run `docker-compose up --build` as usual.
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    profiles: ["local-db"]
+    ports:
+      # Host side only, same reasoning as postgres's 5433 mapping - 6379
+      # collides with a locally-installed Redis on plenty of dev machines.
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   backend:
     build: ./backend
     restart: unless-stopped
-    # Pulls PORT/DATABASE_URL/CORS_ORIGIN/JWT_*/EMAIL_* straight from your
-    # real backend/.env - same file `npm run start:dev` already reads
-    # outside Docker, so there's only one place to keep these in sync.
+    # Pulls PORT/DATABASE_URL/CORS_ORIGIN/JWT_*/EMAIL_*/REDIS_URL straight
+    # from your real backend/.env - same file `npm run start:dev` already
+    # reads outside Docker, so there's only one place to keep these in sync.
+    # With --profile local-db, REDIS_URL must point at this service by name:
+    # redis://redis:6379 (not localhost, and not the host-side 6380 above).
     env_file:
       - ./backend/.env
     # Generates the client (can't happen at image-build time - prisma.config.ts
@@ -69,5 +91,6 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:
   backend_node_modules:
   frontend_node_modules:

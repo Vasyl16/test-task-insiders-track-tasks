@@ -29,6 +29,20 @@ export class ProjectsRepository {
     });
   }
 
+  // Used by ProjectsService to fan out cache invalidation to every member's
+  // own project-list cache on create/update/delete, since the `ownership`
+  // filter makes that list's contents vary per calling user. Duplicates
+  // WorkspacesRepository's own equivalent lookup rather than reaching into
+  // another module's repository - same precedent as TasksRepository
+  // duplicating Workspace/Project lookups.
+  async findWorkspaceMemberUserIds(workspaceId: string): Promise<string[]> {
+    const members = await this.prisma.workspaceMember.findMany({
+      where: { workspaceId },
+      select: { userId: true },
+    });
+    return members.map((member) => member.userId);
+  }
+
   create(data: {
     workspaceId: string;
     name: string;

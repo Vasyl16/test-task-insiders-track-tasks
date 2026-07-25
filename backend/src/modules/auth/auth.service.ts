@@ -10,6 +10,8 @@ import { createHash, randomBytes } from 'crypto';
 import ms from 'ms';
 import { User } from '@prisma/client';
 import { AppConfig } from '@config/config.types';
+import { cacheKeys } from '@redis/cache-keys';
+import { RedisService } from '@redis/redis.service';
 import { AuthRepository } from './auth.repository';
 import { AuthTokensDto } from './dto/auth-tokens.dto';
 import { LoginDto } from './dto/login.dto';
@@ -29,6 +31,7 @@ export class AuthService {
     private readonly authRepository: AuthRepository,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService<AppConfig, true>,
+    private readonly redisService: RedisService,
   ) {}
 
   async register(dto: RegisterDto): Promise<RegisterResponseDto> {
@@ -120,20 +123,45 @@ export class AuthService {
   // Verifies a raw access-token string and resolves the user it belongs to —
   // used by the WebSocket gateway's handshake, which has no HTTP request/
   // Authorization header for Passport's JwtStrategy to read, so it can't
-  // reuse AuthGuard('jwt') as-is. Mirrors JwtStrategy.validate() exactly.
+  // reuse AuthGuard('jwt') as-is. Mirrors JwtStrategy.validate() exactly,
+  // including going through the same cached lookup below.
   async verifyAccessToken(token: string): Promise<UserResponseDto> {
     try {
       const payload = await this.jwtService.verifyAsync<JwtPayload>(token, {
         secret: this.configService.get('jwt', { infer: true }).accessSecret,
       });
-      const user = await this.authRepository.findById(payload.sub);
+      const user = await this.getCachedUser(payload.sub);
       if (!user) {
         throw new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE);
       }
-      return new UserResponseDto(user);
+      return user;
     } catch {
       throw new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE);
     }
+  }
+
+  // Backs both verifyAccessToken above and JwtStrategy.validate() — i.e.
+  // every authenticated HTTP request and WS handshake in the app resolves
+  // its current user through here, since JwtStrategy calls this instead of
+  // AuthRepository directly. Worth caching precisely because it's on that
+  // hot path, not just /auth/me. No explicit invalidation hook exists yet
+  // (TTL-only) because there's no profile-edit endpoint that could make a
+  // cached entry stale — wire one up here if that ever changes.
+  async getCachedUser(id: string): Promise<UserResponseDto | null> {
+    const cacheKey = cacheKeys.authUser(id);
+    const cached = await this.redisService.get<UserResponseDto>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const user = await this.authRepository.findById(id);
+    if (!user) {
+      return null;
+    }
+
+    const dto = new UserResponseDto(user);
+    await this.redisService.set(cacheKey, dto);
+    return dto;
   }
 
   private async issueTokens(user: User): Promise<AuthTokensDto> {

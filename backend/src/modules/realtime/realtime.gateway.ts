@@ -8,12 +8,18 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import type { Server } from 'socket.io';
+import { SkipThrottle } from '@nestjs/throttler';
 import { WsExceptionFilter } from '@common/filters';
 import { AuthService } from '@modules/auth/auth.service';
 import { JoinProjectDto } from './dto/join-project.dto';
 import type { AuthenticatedSocket } from './interfaces/authenticated-socket.interface';
 import { RealtimeRepository } from './realtime.repository';
 
+// The global ThrottlerGuard (APP_GUARD in AppModule) reads its request/
+// response off switchToHttp(), which is meaningless for a WS ExecutionContext
+// (it would resolve to the socket/payload instead and throw) - this gateway
+// has no use for HTTP-style rate limiting anyway, so it's exempted outright.
+@SkipThrottle()
 @WebSocketGateway()
 @UseFilters(WsExceptionFilter)
 // main.ts's app.useGlobalPipes(...) only binds to the HTTP adapter — a WS

@@ -5,7 +5,9 @@ import { PassportModule } from '@nestjs/passport';
 import { Test } from '@nestjs/testing';
 import { User } from '@prisma/client';
 import { AuthRepository } from '@modules/auth/auth.repository';
+import { AuthService } from '@modules/auth/auth.service';
 import { JwtStrategy } from '@modules/auth/strategies/jwt.strategy';
+import { RedisService } from '@redis/redis.service';
 import { JwtAuthGuard } from '../jwt-auth.guard';
 
 const SECRET = 'guard-test-secret';
@@ -46,6 +48,16 @@ describe('JwtAuthGuard', () => {
       findById: jest.fn(),
     } as unknown as jest.Mocked<AuthRepository>;
 
+    // JwtStrategy delegates to AuthService.getCachedUser (Redis-cached) —
+    // stubbed as an always-miss cache so every test still exercises the
+    // AuthRepository mock above, same as before this delegation existed.
+    const redisService: jest.Mocked<RedisService> = {
+      get: jest.fn().mockResolvedValue(undefined),
+      set: jest.fn().mockResolvedValue(undefined),
+      del: jest.fn().mockResolvedValue(undefined),
+      delByPrefix: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<RedisService>;
+
     const moduleRef = await Test.createTestingModule({
       imports: [
         ConfigModule.forRoot({
@@ -59,7 +71,9 @@ describe('JwtAuthGuard', () => {
       providers: [
         JwtStrategy,
         JwtAuthGuard,
+        AuthService,
         { provide: AuthRepository, useValue: authRepository },
+        { provide: RedisService, useValue: redisService },
       ],
     }).compile();
 

@@ -1,12 +1,37 @@
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import {
+  Global,
+  INestApplication,
+  Module,
+  ValidationPipe,
+} from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Test } from '@nestjs/testing';
 import * as bcrypt from 'bcrypt';
 import request from 'supertest';
 import { User } from '@prisma/client';
+import { RedisService } from '@redis/redis.service';
 import { AuthModule } from '../auth.module';
 import { AuthRepository } from '../auth.repository';
+
+// AuthService now caches through RedisService — not what this integration
+// test is about, so it's stubbed as an always-miss, never-fails cache
+// rather than pulling in the real RedisModule/a live Redis connection.
+// RedisModule is never imported here (this test only imports AuthModule),
+// so plain `.overrideProvider(RedisService)` has nothing to override —
+// providing it via a small @Global test module makes it reachable from
+// AuthService the same way the real (also @Global) RedisModule would.
+// useFactory (not useValue) so the module can be declared once at file
+// scope while still returning whatever `redisService` is assigned to by
+// the time this factory actually runs (inside beforeAll, before it).
+let redisService: jest.Mocked<RedisService>;
+
+@Global()
+@Module({
+  providers: [{ provide: RedisService, useFactory: () => redisService }],
+  exports: [RedisService],
+})
+class TestRedisModule {}
 
 // Integration layer: real AuthController + real AuthService + real
 // JwtModule/JwtStrategy wiring, with only the DB (AuthRepository) mocked —
@@ -39,6 +64,13 @@ describe('AuthController (integration)', () => {
       rotateRefreshToken: jest.fn(),
     } as unknown as jest.Mocked<AuthRepository>;
 
+    redisService = {
+      get: jest.fn().mockResolvedValue(undefined),
+      set: jest.fn().mockResolvedValue(undefined),
+      del: jest.fn().mockResolvedValue(undefined),
+      delByPrefix: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<RedisService>;
+
     const moduleRef = await Test.createTestingModule({
       imports: [
         ConfigModule.forRoot({
@@ -54,6 +86,7 @@ describe('AuthController (integration)', () => {
             }),
           ],
         }),
+        TestRedisModule,
         AuthModule,
       ],
     })

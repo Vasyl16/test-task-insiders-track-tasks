@@ -4,6 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { RefreshToken, User } from '@prisma/client';
 import { AppConfig } from '@config/config.types';
+import { RedisService } from '@redis/redis.service';
 import { AuthRepository } from '../auth.repository';
 import { AuthService } from '../auth.service';
 import { LoginDto } from '../dto/login.dto';
@@ -19,6 +20,7 @@ describe('AuthService', () => {
   let authRepository: jest.Mocked<AuthRepository>;
   let jwtService: jest.Mocked<JwtService>;
   let configService: jest.Mocked<ConfigService<AppConfig, true>>;
+  let redisService: jest.Mocked<RedisService>;
 
   const now = new Date('2026-01-01T00:00:00.000Z');
   const user: User = {
@@ -65,7 +67,19 @@ describe('AuthService', () => {
       }),
     } as unknown as jest.Mocked<ConfigService<AppConfig, true>>;
 
-    service = new AuthService(authRepository, jwtService, configService);
+    redisService = {
+      get: jest.fn(),
+      set: jest.fn(),
+      del: jest.fn(),
+      delByPrefix: jest.fn(),
+    } as unknown as jest.Mocked<RedisService>;
+
+    service = new AuthService(
+      authRepository,
+      jwtService,
+      configService,
+      redisService,
+    );
   });
 
   describe('register', () => {
@@ -273,6 +287,48 @@ describe('AuthService', () => {
       await expect(service.verifyAccessToken('valid-token')).rejects.toThrow(
         UnauthorizedException,
       );
+    });
+  });
+
+  describe('getCachedUser', () => {
+    it('returns the cached value without querying the repository on a hit', async () => {
+      const cached = {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        createdAt: user.createdAt,
+      };
+      redisService.get.mockResolvedValue(cached);
+
+      const result = await service.getCachedUser(user.id);
+
+      expect(result).toEqual(cached);
+      expect(authRepository.findById).not.toHaveBeenCalled();
+    });
+
+    it('falls back to the repository and populates the cache on a miss', async () => {
+      redisService.get.mockResolvedValue(undefined);
+      authRepository.findById.mockResolvedValue(user);
+
+      const result = await service.getCachedUser(user.id);
+
+      expect(result).toEqual({
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        createdAt: user.createdAt,
+      });
+      expect(redisService.set).toHaveBeenCalledWith('auth:user:user-1', result);
+    });
+
+    it('returns null without caching when the user does not exist', async () => {
+      redisService.get.mockResolvedValue(undefined);
+      authRepository.findById.mockResolvedValue(null);
+
+      const result = await service.getCachedUser('missing-user');
+
+      expect(result).toBeNull();
+      expect(redisService.set).not.toHaveBeenCalled();
     });
   });
 });

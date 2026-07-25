@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { AppConfig } from '@config/config.types';
-import { AuthRepository } from '../auth.repository';
+import { AuthService } from '../auth.service';
 import { UserResponseDto } from '../dto/user-response.dto';
 import { JwtPayload } from '../interfaces/jwt-payload.interface';
 
@@ -11,7 +11,7 @@ import { JwtPayload } from '../interfaces/jwt-payload.interface';
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
     configService: ConfigService<AppConfig, true>,
-    private readonly authRepository: AuthRepository,
+    private readonly authService: AuthService,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
@@ -20,12 +20,15 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
+  // Delegates to AuthService.getCachedUser (Redis-cached, see that method's
+  // comment) rather than calling AuthRepository directly — this runs on
+  // every single authenticated request in the app.
   async validate(payload: JwtPayload): Promise<UserResponseDto> {
-    const user = await this.authRepository.findById(payload.sub);
+    const user = await this.authService.getCachedUser(payload.sub);
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    return new UserResponseDto(user);
+    return user;
   }
 }

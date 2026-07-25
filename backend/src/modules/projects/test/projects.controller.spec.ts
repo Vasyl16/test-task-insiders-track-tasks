@@ -9,6 +9,7 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { Workspace, WorkspaceMember, WorkspaceRole } from '@prisma/client';
 import { JwtAuthGuard } from '@common/guards';
+import { RedisService } from '@redis/redis.service';
 import { ProjectsController } from '../projects.controller';
 import { ProjectsRepository } from '../projects.repository';
 import { ProjectsService } from '../projects.service';
@@ -59,6 +60,7 @@ describe('ProjectsController (integration)', () => {
     repo = {
       findWorkspaceById: jest.fn(),
       findWorkspaceMembership: jest.fn(),
+      findWorkspaceMemberUserIds: jest.fn().mockResolvedValue([]),
       create: jest.fn(),
       findById: jest.fn(),
       findManyForWorkspace: jest.fn(),
@@ -67,11 +69,19 @@ describe('ProjectsController (integration)', () => {
       delete: jest.fn(),
     } as unknown as jest.Mocked<ProjectsRepository>;
 
+    const redisService: jest.Mocked<RedisService> = {
+      get: jest.fn(),
+      set: jest.fn(),
+      del: jest.fn(),
+      delByPrefix: jest.fn(),
+    } as unknown as jest.Mocked<RedisService>;
+
     const moduleRef = await Test.createTestingModule({
       controllers: [ProjectsController],
       providers: [
         ProjectsService,
         { provide: ProjectsRepository, useValue: repo },
+        { provide: RedisService, useValue: redisService },
       ],
     })
       .overrideGuard(JwtAuthGuard)

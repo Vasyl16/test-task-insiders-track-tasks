@@ -16,4 +16,15 @@ export default (): AppConfig => ({
     from: process.env.EMAIL_FROM || '',
     token: process.env.EMAIL_TOKEN || '',
   },
+  redis: {
+    url: process.env.REDIS_URL || 'redis://localhost:6379',
+    cacheTtlSeconds: parseInt(
+      process.env.CACHE_TTL_SECONDS ?? `${30 * 60}`,
+      10,
+    ),
+  },
+  throttle: {
+    ttlMs: parseInt(process.env.THROTTLE_TTL_MS ?? '60000', 10),
+    limit: parseInt(process.env.THROTTLE_LIMIT ?? '10', 10),
+  },
 });

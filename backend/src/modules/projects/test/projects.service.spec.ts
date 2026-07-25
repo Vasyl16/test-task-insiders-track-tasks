@@ -5,6 +5,7 @@ import {
   WorkspaceMember,
   WorkspaceRole,
 } from '@prisma/client';
+import { RedisService } from '@redis/redis.service';
 import { CreateProjectDto } from '../dto/create-project.dto';
 import { FindProjectsQueryDto } from '../dto/find-projects-query.dto';
 import { UpdateProjectDto } from '../dto/update-project.dto';
@@ -14,6 +15,7 @@ import { ProjectsService } from '../projects.service';
 describe('ProjectsService', () => {
   let service: ProjectsService;
   let repo: jest.Mocked<ProjectsRepository>;
+  let redisService: jest.Mocked<RedisService>;
 
   const now = new Date('2026-01-01T00:00:00.000Z');
   const workspaceId = 'workspace-1';
@@ -43,6 +45,7 @@ describe('ProjectsService', () => {
     repo = {
       findWorkspaceById: jest.fn(),
       findWorkspaceMembership: jest.fn(),
+      findWorkspaceMemberUserIds: jest.fn().mockResolvedValue([]),
       create: jest.fn(),
       findById: jest.fn(),
       findManyForWorkspace: jest.fn(),
@@ -51,7 +54,14 @@ describe('ProjectsService', () => {
       delete: jest.fn(),
     } as unknown as jest.Mocked<ProjectsRepository>;
 
-    service = new ProjectsService(repo);
+    redisService = {
+      get: jest.fn(),
+      set: jest.fn(),
+      del: jest.fn(),
+      delByPrefix: jest.fn(),
+    } as unknown as jest.Mocked<RedisService>;
+
+    service = new ProjectsService(repo, redisService);
   });
 
   describe('create', () => {
