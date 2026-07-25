@@ -19,13 +19,16 @@ When a task is created/updated/deleted, every other client currently viewing tha
 **Frontend — React 19 + TanStack Query, feature-sliced-ish layout (`app / pages / widgets / features / entities / shared`).**
 All server state (including the authenticated user) lives in the TanStack Query cache — there is deliberately no separate client store duplicating it. React Hook Form + Zod for forms, DnD Kit for the Kanban board's drag-and-drop, Tailwind for styling.
 
+**Workspace invites: registered users only (intentional MVP scope).**
+Inviting a member looks the invitee up by email and links the resulting `WorkspaceInvite` to their `User.id` (`invitedUserId`, a real FK). If no account exists for that email, the request 404s — there's no record created, and no invite is "pending" for an email with nobody behind it. This is a deliberate trade-off, not an oversight: supporting invites to not-yet-registered emails would need a genuinely different design — a pending invite keyed by email rather than user ID, stored independently of any `User` row, an unauthenticated read path so a visitor can see the invite before they even have an account, and a "claim" step that links it to the new account once that email registers. That's a separate feature (different storage shape, a claiming flow, a new unauthenticated endpoint), not a small tweak to the current one, so it's out of scope here. See the comment on `InvitesService.create` (`backend/src/modules/invites/invites.service.ts`) for the same reasoning in code.
+
 ## Features
 
 - Auth: register/login/logout, JWT access + rotating refresh tokens.
 - Workspaces & projects: CRUD, membership, owner/creator-gated edit & delete.
 - Tasks: CRUD, Kanban board with drag-and-drop status changes, priority, assignee, optional due date, search/priority/assignee filters, cursor-paginated.
 - Comments and an automatic task status history audit log.
-- Workspace invites: send → accept/decline, with a best-effort email notification.
+- Workspace invites: send → accept/decline, with a best-effort email notification. Invites only work for already-registered emails (see "Workspace invites" below).
 - Real-time board sync over WebSockets (create/update/delete broadcast to everyone viewing that project).
 - Search/sort/ownership filters and pagination on every list endpoint.
 - Swagger API docs (`@nestjs/swagger`, auto-generated from the existing `class-validator` DTOs).

@@ -36,6 +36,11 @@ export class InvitesRepository {
     });
   }
 
+  // Looks up an existing account only — there's no separate "invited email"
+  // record to fall back to. An email with no matching User returns null,
+  // and the service turns that into a 404 rather than inviting the email
+  // address itself. See the comment in InvitesService.create for why
+  // invite-by-email-only isn't supported yet.
   findUserByEmail(email: string): Promise<User | null> {
     return this.prisma.user.findUnique({ where: { email } });
   }

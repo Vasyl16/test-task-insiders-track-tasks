@@ -54,6 +54,20 @@ export class InvitesService {
     }
     await this.assertOwner(workspaceId, ownerId);
 
+    // Intentional MVP trade-off: invites only work for people who already
+    // have an account. WorkspaceInvite links to the invitee via a real FK
+    // (invitedUserId -> User.id), resolved by an email lookup right here —
+    // there's no record at all for an email with no matching User, so a
+    // non-existent email 404s instead of creating anything.
+    //
+    // Supporting invites to not-yet-registered emails would need a
+    // different design: a pending invite keyed by email (not userId) that
+    // survives independently of any User row, plus a "claim" step that
+    // links it to the new account once that email registers (and a way to
+    // show it to a not-yet-logged-in visitor at all, e.g. an invite token
+    // in the emailed link). That's a meaningfully bigger feature — separate
+    // storage shape, a claiming flow, an unauthenticated read path — and is
+    // out of scope here.
     const invitedUser = await this.invitesRepository.findUserByEmail(dto.email);
     if (!invitedUser) {
       throw new NotFoundException(USER_NOT_FOUND_MESSAGE);
